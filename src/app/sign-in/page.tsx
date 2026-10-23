@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/services/authService';
 import Link from 'next/link';
+import axios from 'axios';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -27,57 +28,68 @@ export default function SignInPage() {
     try {
       const response = await authService.login(formData);
       authService.setToken(response.access_token);
-      router.push('/dashboard'); // Redirige al área protegida
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Credenciales inválidas');
+      router.push('/');
+    } catch (err: unknown) {
+      if (axios.isAxiosError<{ detail: string }>(err)) {
+        setError(err.response?.data?.detail || 'Credenciales inválidas');
+      } else {
+        setError('Ocurrió un error inesperado al intentar iniciar sesión.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold text-center text-gray-900 mb-6">
+    <div className="min-h-screen flex items-center justify-center bg-neutral-950 font-sans px-4">
+      <div className="max-w-md w-full p-8 bg-neutral-900/50 border border-neutral-800 rounded-xl">
+        <h2 className="text-2xl font-medium text-center text-white mb-8 tracking-tight">
           Iniciar Sesión
         </h2>
 
         {error && (
-          <div className="bg-red-50 text-red-500 p-3 rounded mb-4 text-sm">
+          <div className="bg-red-950/30 border border-red-900/50 text-red-400 p-3 rounded-lg mb-6 text-sm text-center">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="email"
-            name="email"
-            placeholder="Correo electrónico"
-            required
-            onChange={handleChange}
-            className="w-full px-3 py-2 border rounded-md"
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="Contraseña"
-            required
-            onChange={handleChange}
-            className="w-full px-3 py-2 border rounded-md"
-          />
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <input
+              type="email"
+              name="email"
+              placeholder="Correo electrónico"
+              required
+              onChange={handleChange}
+              className="w-full px-4 py-3 bg-neutral-950 border border-neutral-800 rounded-lg text-white placeholder:text-neutral-600 focus:outline-none focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 transition-colors"
+            />
+          </div>
+          <div>
+            <input
+              type="password"
+              name="password"
+              placeholder="Contraseña"
+              required
+              onChange={handleChange}
+              className="w-full px-4 py-3 bg-neutral-950 border border-neutral-800 rounded-lg text-white placeholder:text-neutral-600 focus:outline-none focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 transition-colors"
+            />
+          </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
+            className="w-full bg-white text-black font-medium py-3 px-4 rounded-lg hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
           >
             {loading ? 'Iniciando...' : 'Ingresar'}
           </button>
         </form>
 
-        <p className="mt-4 text-center text-sm text-gray-600">
+        <p className="mt-8 text-center text-sm text-neutral-400">
           ¿No tienes cuenta?{' '}
-          <Link href="/signup" className="text-blue-600 hover:underline">
+          <Link
+            href="/sign-up"
+            className="text-white hover:text-neutral-300 transition-colors font-medium"
+          >
             Regístrate
           </Link>
         </p>
