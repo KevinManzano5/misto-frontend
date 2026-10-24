@@ -4,29 +4,44 @@ import { useEffect, useState, Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
-import { storeService, Store } from '@/services/storeService';
+import { storeService, Store, StoreServiceItem } from '@/services/storeService';
 import { authService } from '@/services/authService';
 
-// 1. Extraemos toda la lógica a un componente interno
 function StoreDetailsContent() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
 
   const [store, setStore] = useState<Store | null>(null);
+  const [services, setServices] = useState<StoreServiceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedDate, setSelectedDate] = useState<string>('');
 
+  // Scheduling statuses
+  const [selectedServiceId, setSelectedServiceId] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedTime, setSelectedTime] = useState<string>('');
+
+  // Availability statuses
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+
+  // 1. Carga inicial de la tienda y sus servicios
   useEffect(() => {
-    const fetchStoreDetails = async () => {
+    const fetchStoreData = async () => {
       try {
-        const data = await storeService.getById(id);
-        setStore(data);
+        const [storeData, servicesData] = await Promise.all([
+          storeService.getById(id),
+          storeService.getServices(id),
+        ]);
+
+        setStore(storeData);
+        setServices(servicesData);
       } catch (err: unknown) {
         console.error(err);
         if (axios.isAxiosError(err)) {
           setError(
-            err.response?.data?.detail || 'No se pudo cargar la tienda.',
+            err.response?.data?.detail ||
+              'No se pudo cargar la información de la tienda.',
           );
         } else {
           setError('Ocurrió un error inesperado al cargar los detalles.');
@@ -36,8 +51,37 @@ function StoreDetailsContent() {
       }
     };
 
-    if (id) fetchStoreDetails();
+    if (id) fetchStoreData();
   }, [id]);
+
+  // 2. Carga dinámica de horarios disponibles al seleccionar fecha y servicio
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      if (!selectedServiceId || !selectedDate) {
+        setAvailableSlots([]);
+        return;
+      }
+
+      setSlotsLoading(true);
+      setSelectedTime(''); // Resetear la hora si el usuario cambia la fecha o el servicio
+
+      try {
+        const slots = await storeService.getAvailability(
+          id,
+          selectedServiceId,
+          selectedDate,
+        );
+        setAvailableSlots(slots);
+      } catch (err) {
+        console.error('Error al cargar disponibilidad', err);
+        setAvailableSlots([]);
+      } finally {
+        setSlotsLoading(false);
+      }
+    };
+
+    fetchAvailability();
+  }, [id, selectedServiceId, selectedDate]);
 
   const handleLogout = () => {
     authService.logout();
@@ -109,20 +153,38 @@ function StoreDetailsContent() {
               1. Selecciona un servicio
             </h2>
             <div className="space-y-4">
-              <div className="bg-neutral-900/50 border border-neutral-800 p-4 rounded-xl cursor-pointer hover:border-neutral-500 transition-colors">
-                <div className="flex justify-between items-center mb-1">
-                  <h3 className="text-white font-medium">Corte de Cabello</h3>
-                  <span className="text-neutral-400">$15.00</span>
-                </div>
-                <p className="text-sm text-neutral-500">30 min</p>
-              </div>
-              <div className="bg-neutral-900/50 border border-neutral-800 p-4 rounded-xl cursor-pointer hover:border-neutral-500 transition-colors">
-                <div className="flex justify-between items-center mb-1">
-                  <h3 className="text-white font-medium">Tinte Completo</h3>
-                  <span className="text-neutral-400">$45.00</span>
-                </div>
-                <p className="text-sm text-neutral-500">90 min</p>
-              </div>
+              {services.length === 0 ? (
+                <p className="text-neutral-500">
+                  No hay servicios disponibles.
+                </p>
+              ) : (
+                services.map((service) => (
+                  <div
+                    key={service.id}
+                    onClick={() => setSelectedServiceId(service.id)}
+                    className={`bg-neutral-900/50 border p-4 rounded-xl cursor-pointer transition-colors ${
+                      selectedServiceId === service.id
+                        ? 'border-white'
+                        : 'border-neutral-800 hover:border-neutral-500'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center mb-1">
+                      <h3 className="text-white font-medium">{service.name}</h3>
+                      <span className="text-neutral-400">
+                        ${service.price.toFixed(2)}
+                      </span>
+                    </div>
+                    {service.description && (
+                      <p className="text-sm text-neutral-400 mb-2 line-clamp-2">
+                        {service.description}
+                      </p>
+                    )}
+                    <p className="text-sm text-neutral-500">
+                      {service.duration_minutes} min
+                    </p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -149,19 +211,42 @@ function StoreDetailsContent() {
                   Horas disponibles
                 </label>
                 <div className="grid grid-cols-3 gap-3">
-                  <button className="bg-neutral-950 border border-neutral-800 text-neutral-300 py-2 rounded-lg hover:border-neutral-500 transition-colors">
-                    09:00
-                  </button>
-                  <button className="bg-neutral-950 border border-neutral-800 text-neutral-300 py-2 rounded-lg hover:border-neutral-500 transition-colors">
-                    10:30
-                  </button>
-                  <button className="bg-neutral-950 border border-neutral-800 text-neutral-300 py-2 rounded-lg hover:border-neutral-500 transition-colors opacity-50 cursor-not-allowed">
-                    14:00
-                  </button>
+                  {slotsLoading ? (
+                    <p className="text-neutral-500 text-sm col-span-3">
+                      Calculando horarios...
+                    </p>
+                  ) : availableSlots.length === 0 &&
+                    selectedServiceId &&
+                    selectedDate ? (
+                    <p className="text-neutral-500 text-sm col-span-3">
+                      No hay horarios disponibles para esta fecha.
+                    </p>
+                  ) : availableSlots.length === 0 ? (
+                    <p className="text-neutral-500 text-sm col-span-3">
+                      Selecciona un servicio y fecha primero.
+                    </p>
+                  ) : (
+                    availableSlots.map((time) => (
+                      <button
+                        key={time}
+                        onClick={() => setSelectedTime(time)}
+                        className={`py-2 rounded-lg transition-colors border ${
+                          selectedTime === time
+                            ? 'bg-white text-black border-white'
+                            : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-neutral-500'
+                        }`}
+                      >
+                        {time}
+                      </button>
+                    ))
+                  )}
                 </div>
               </div>
 
-              <button className="w-full bg-white text-black font-medium py-3 px-4 rounded-lg hover:bg-neutral-200 transition-colors">
+              <button
+                disabled={!selectedServiceId || !selectedDate || !selectedTime}
+                className="w-full bg-white text-black font-medium py-3 px-4 rounded-lg hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 Confirmar Cita
               </button>
             </div>
@@ -172,7 +257,6 @@ function StoreDetailsContent() {
   );
 }
 
-// 2. Exportamos el componente principal envolviendo todo en Suspense
 export default function StoreDetailsPage() {
   return (
     <Suspense
