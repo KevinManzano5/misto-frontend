@@ -18,7 +18,11 @@ function StoreDetailsContent() {
 
   // Scheduling statuses
   const [selectedServiceId, setSelectedServiceId] = useState<string>('');
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  // Se precarga con la fecha de hoy para que, al seleccionar un servicio,
+  // la disponibilidad se consulte de inmediato sin esperar a que el usuario elija fecha.
+  const [selectedDate, setSelectedDate] = useState<string>(() =>
+    new Date().toISOString().split('T')[0],
+  );
   const [selectedTime, setSelectedTime] = useState<string>('');
 
   // Availability statuses
