@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { PUBLIC_ROUTES } from '@/lib/publicRoutes';
 
 // Esta función se ejecuta antes de renderizar cualquier página
 export function middleware(request: NextRequest) {
@@ -8,8 +9,7 @@ export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
   // 1. Definir qué rutas son públicas (no requieren sesión)
-  const publicRoutes = ['/sign-in', '/sign-up'];
-  const isPublicRoute = publicRoutes.includes(pathname);
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
 
   // 2. Si el usuario NO tiene token y quiere acceder a una ruta privada, lo mandamos al login
   if (!token && !isPublicRoute) {

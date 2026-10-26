@@ -19,6 +19,13 @@ export interface TokenResponse {
   // Añade refresh_token si tu API de Go lo devuelve
 }
 
+export interface ValidateTokenResponse {
+  valid: boolean;
+  user_id: string;
+  email: string;
+  role: string;
+}
+
 export const authService = {
   register: async (data: SignUpRequest): Promise<TokenResponse> => {
     const response = await apiClient.post<TokenResponse>('/auth/sign_up', data);
@@ -28,6 +35,13 @@ export const authService = {
   login: async (data: SignInRequest): Promise<TokenResponse> => {
     // Ajusta la ruta '/auth/signin' según cómo la definiste en tu router de Go
     const response = await apiClient.post<TokenResponse>('/auth/sign_in', data);
+    return response.data;
+  },
+
+  validate: async (): Promise<ValidateTokenResponse> => {
+    const response = await apiClient.get<ValidateTokenResponse>(
+      '/auth/validate',
+    );
     return response.data;
   },
 
@@ -45,7 +59,7 @@ export const authService = {
 
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token');
-      window.location.href = '/signin';
+      window.location.href = '/sign-in';
     }
   },
 };
