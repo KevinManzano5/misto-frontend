@@ -4,9 +4,7 @@ import { apiClient } from '@/lib/apiClient';
 export interface CreateAppointmentRequest {
   store_id: string;
   service_id: string;
-  client_id: string;
   start_time: string; // ISO 8601 string, manejado por time.Time en Go
-  duration_minutes: number;
 }
 
 export interface AppointmentResponse {

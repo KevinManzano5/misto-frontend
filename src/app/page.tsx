@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { isAxiosError } from 'axios';
 import { storeService, Store } from '@/services/storeService';
-import { authService } from '@/services/authService';
+import UserMenu from '@/components/UserMenu';
 
 export default function HomePage() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -37,10 +37,6 @@ export default function HomePage() {
     fetchStores();
   }, []);
 
-  const handleLogout = () => {
-    authService.logout();
-  };
-
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-300 font-sans">
       {/* Navbar Superior */}
@@ -48,12 +44,7 @@ export default function HomePage() {
         <h1 className="text-xl font-semibold text-white tracking-tight">
           Misto
         </h1>
-        <button
-          onClick={handleLogout}
-          className="text-sm text-neutral-400 hover:text-white transition-colors"
-        >
-          Cerrar Sesión
-        </button>
+        <UserMenu />
       </nav>
 
       {/* Contenido Principal */}

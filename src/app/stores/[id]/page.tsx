@@ -5,7 +5,27 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
 import { storeService, Store, StoreServiceItem } from '@/services/storeService';
-import { authService } from '@/services/authService';
+import { appointmentService } from '@/services/appointmentService';
+import UserMenu from '@/components/UserMenu';
+
+// Construye un ISO 8601 con offset de zona horaria local (ej. "2026-10-26T12:30:00-06:00")
+// a partir de una fecha ("YYYY-MM-DD") y una hora ("HH:mm" o un ISO ya completo).
+function buildStartTime(date: string, time: string): string {
+  const parsedDate = time.includes('T')
+    ? new Date(time)
+    : new Date(`${date}T${time}`);
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const offsetMinutes = -parsedDate.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? '+' : '-';
+  const absOffset = Math.abs(offsetMinutes);
+
+  return (
+    `${parsedDate.getFullYear()}-${pad(parsedDate.getMonth() + 1)}-${pad(parsedDate.getDate())}` +
+    `T${pad(parsedDate.getHours())}:${pad(parsedDate.getMinutes())}:${pad(parsedDate.getSeconds())}` +
+    `${sign}${pad(Math.floor(absOffset / 60))}:${pad(absOffset % 60)}`
+  );
+}
 
 function StoreDetailsContent() {
   const { id } = useParams() as { id: string };
@@ -28,6 +48,11 @@ function StoreDetailsContent() {
   // Availability statuses
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
+
+  // Confirmation statuses
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState('');
+  const [confirmSuccess, setConfirmSuccess] = useState(false);
 
   // 1. Carga inicial de la tienda y sus servicios
   useEffect(() => {
@@ -87,8 +112,33 @@ function StoreDetailsContent() {
     fetchAvailability();
   }, [id, selectedServiceId, selectedDate]);
 
-  const handleLogout = () => {
-    authService.logout();
+  const handleConfirmAppointment = async () => {
+    if (!selectedServiceId || !selectedTime) return;
+
+    setConfirming(true);
+    setConfirmError('');
+    setConfirmSuccess(false);
+
+    try {
+      await appointmentService.create({
+        store_id: id,
+        service_id: selectedServiceId,
+        start_time: buildStartTime(selectedDate, selectedTime),
+      });
+      setConfirmSuccess(true);
+      setSelectedTime('');
+    } catch (err: unknown) {
+      console.error('Error al confirmar la cita', err);
+      if (axios.isAxiosError(err)) {
+        setConfirmError(
+          err.response?.data?.detail || 'No se pudo confirmar la cita.',
+        );
+      } else {
+        setConfirmError('Ocurrió un error inesperado al confirmar la cita.');
+      }
+    } finally {
+      setConfirming(false);
+    }
   };
 
   if (loading) {
@@ -126,12 +176,7 @@ function StoreDetailsContent() {
         >
           Misto
         </Link>
-        <button
-          onClick={handleLogout}
-          className="text-sm text-neutral-400 hover:text-white transition-colors"
-        >
-          Cerrar Sesión
-        </button>
+        <UserMenu />
       </nav>
 
       <main className="max-w-4xl mx-auto px-6 py-8">
@@ -247,11 +292,26 @@ function StoreDetailsContent() {
                 </div>
               </div>
 
+              {confirmError && (
+                <p className="text-red-400 text-sm mb-4">{confirmError}</p>
+              )}
+              {confirmSuccess && (
+                <p className="text-green-400 text-sm mb-4">
+                  ¡Cita confirmada con éxito!
+                </p>
+              )}
+
               <button
-                disabled={!selectedServiceId || !selectedDate || !selectedTime}
+                onClick={handleConfirmAppointment}
+                disabled={
+                  !selectedServiceId ||
+                  !selectedDate ||
+                  !selectedTime ||
+                  confirming
+                }
                 className="w-full bg-white text-black font-medium py-3 px-4 rounded-lg hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Confirmar Cita
+                {confirming ? 'Confirmando...' : 'Confirmar Cita'}
               </button>
             </div>
           </div>

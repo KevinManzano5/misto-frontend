@@ -19,10 +19,21 @@ export interface StoreServiceItem {
   is_active: boolean;
 }
 
+export interface CreateStoreRequest {
+  name: string;
+  description: string;
+}
+
 export const storeService = {
   // Get all stores for the home page
   getAll: async (): Promise<Store[]> => {
     const response = await apiClient.get<Store[]>('/stores');
+    return response.data;
+  },
+
+  // Create a new store for the authenticated user
+  create: async (data: CreateStoreRequest): Promise<Store> => {
+    const response = await apiClient.post<Store>('/stores', data);
     return response.data;
   },
 
