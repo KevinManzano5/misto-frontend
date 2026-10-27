@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { isAxiosError } from 'axios';
 import {
   storeScheduleService,
@@ -31,49 +31,33 @@ interface DayFormState {
 
 interface StoreSchedulesSectionProps {
   storeId: string;
+  schedules: StoreSchedule[];
+}
+
+function buildInitialForms(
+  schedules: StoreSchedule[],
+): Record<number, DayFormState> {
+  const forms: Record<number, DayFormState> = {};
+  schedules.forEach((schedule) => {
+    forms[schedule.day_of_week] = {
+      open_time: toTimeInputValue(schedule.open_time),
+      close_time: toTimeInputValue(schedule.close_time),
+      is_closed: schedule.is_closed,
+    };
+  });
+  return forms;
 }
 
 export default function StoreSchedulesSection({
   storeId,
+  schedules,
 }: StoreSchedulesSectionProps) {
-  const [forms, setForms] = useState<Record<number, DayFormState>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [forms, setForms] = useState<Record<number, DayFormState>>(() =>
+    buildInitialForms(schedules),
+  );
   const [savingDay, setSavingDay] = useState<number | null>(null);
   const [saveErrors, setSaveErrors] = useState<Record<number, string>>({});
   const [savedDay, setSavedDay] = useState<number | null>(null);
-
-  useEffect(() => {
-    const fetchSchedules = async () => {
-      try {
-        const data = await storeScheduleService.getByStoreId(storeId);
-
-        const initialForms: Record<number, DayFormState> = {};
-        data.forEach((schedule: StoreSchedule) => {
-          initialForms[schedule.day_of_week] = {
-            open_time: toTimeInputValue(schedule.open_time),
-            close_time: toTimeInputValue(schedule.close_time),
-            is_closed: schedule.is_closed,
-          };
-        });
-        setForms(initialForms);
-      } catch (err: unknown) {
-        console.error('Error al cargar los horarios', err);
-        if (isAxiosError(err)) {
-          setError(
-            err.response?.data?.detail ||
-              'No se pudieron cargar los horarios.',
-          );
-        } else {
-          setError('Ocurrió un error inesperado al cargar los horarios.');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSchedules();
-  }, [storeId]);
 
   const updateForm = (dayOfWeek: number, changes: Partial<DayFormState>) => {
     setForms((prev) => ({
@@ -111,16 +95,6 @@ export default function StoreSchedulesSection({
       setSavingDay(null);
     }
   };
-
-  if (loading) {
-    return (
-      <p className="text-neutral-500 animate-pulse">Cargando horarios...</p>
-    );
-  }
-
-  if (error) {
-    return <p className="text-red-400 text-sm">{error}</p>;
-  }
 
   return (
     <div className="space-y-4">

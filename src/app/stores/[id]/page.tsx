@@ -4,27 +4,28 @@ import { useEffect, useState, Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import axios from 'axios';
-import { storeService, Store, StoreServiceItem } from '@/services/storeService';
-import { appointmentService } from '@/services/appointmentService';
+import { DateTime } from 'luxon';
+import { storeService, Store } from '@/services/storeService';
+import {
+  appointmentService,
+  AppointmentStatus,
+} from '@/services/appointmentService';
 import UserMenu from '@/components/UserMenu';
 
-// Construye un ISO 8601 con offset de zona horaria local (ej. "2026-10-26T12:30:00-06:00")
-// a partir de una fecha ("YYYY-MM-DD") y una hora ("HH:mm" o un ISO ya completo).
-function buildStartTime(date: string, time: string): string {
-  const parsedDate = time.includes('T')
-    ? new Date(time)
-    : new Date(`${date}T${time}`);
+// Evita que "YYYY-MM-DD" se interprete como UTC y cambie de día por el offset local.
+function getDayOfWeek(date: string): number {
+  return new Date(`${date}T00:00:00`).getDay();
+}
 
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const offsetMinutes = -parsedDate.getTimezoneOffset();
-  const sign = offsetMinutes >= 0 ? '+' : '-';
-  const absOffset = Math.abs(offsetMinutes);
+// Combina fecha ("YYYY-MM-DD") y hora ("HH:mm") interpretándolas en la zona
+// horaria de la tienda (no la del navegador) y devuelve un ISO 8601 con su
+// offset correspondiente, ej. "2026-10-28T09:00:00-05:00".
+function buildStartTime(date: string, time: string, storeTimezone: string): string {
+  const startTime = DateTime.fromISO(`${date}T${time}`, {
+    zone: storeTimezone,
+  });
 
-  return (
-    `${parsedDate.getFullYear()}-${pad(parsedDate.getMonth() + 1)}-${pad(parsedDate.getDate())}` +
-    `T${pad(parsedDate.getHours())}:${pad(parsedDate.getMinutes())}:${pad(parsedDate.getSeconds())}` +
-    `${sign}${pad(Math.floor(absOffset / 60))}:${pad(absOffset % 60)}`
-  );
+  return startTime.toISO({ suppressMilliseconds: true }) as string;
 }
 
 function StoreDetailsContent() {
@@ -32,39 +33,31 @@ function StoreDetailsContent() {
   const router = useRouter();
 
   const [store, setStore] = useState<Store | null>(null);
-  const [services, setServices] = useState<StoreServiceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   // Scheduling statuses
-  const [selectedServiceId, setSelectedServiceId] = useState<string>('');
-  // Se precarga con la fecha de hoy para que, al seleccionar un servicio,
-  // la disponibilidad se consulte de inmediato sin esperar a que el usuario elija fecha.
   const [selectedDate, setSelectedDate] = useState<string>(() =>
     new Date().toISOString().split('T')[0],
   );
   const [selectedTime, setSelectedTime] = useState<string>('');
 
-  // Availability statuses
+  // Horarios disponibles para la fecha elegida
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
 
   // Confirmation statuses
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState('');
-  const [confirmSuccess, setConfirmSuccess] = useState(false);
+  const [confirmedStatus, setConfirmedStatus] =
+    useState<AppointmentStatus | null>(null);
 
-  // 1. Carga inicial de la tienda y sus servicios
+  // Carga inicial de la tienda
   useEffect(() => {
     const fetchStoreData = async () => {
       try {
-        const [storeData, servicesData] = await Promise.all([
-          storeService.getById(id),
-          storeService.getServices(id),
-        ]);
-
+        const storeData = await storeService.getById(id);
         setStore(storeData);
-        setServices(servicesData);
       } catch (err: unknown) {
         console.error(err);
         if (axios.isAxiosError(err)) {
@@ -83,26 +76,27 @@ function StoreDetailsContent() {
     if (id) fetchStoreData();
   }, [id]);
 
-  // 2. Carga dinámica de horarios disponibles al seleccionar fecha y servicio
+  const daySchedule = store
+    ? store.schedules.find(
+        (schedule) => schedule.day_of_week === getDayOfWeek(selectedDate),
+      ) ?? null
+    : null;
+
+  // Carga los horarios disponibles para la fecha elegida
   useEffect(() => {
     const fetchAvailability = async () => {
-      if (!selectedServiceId || !selectedDate) {
+      if (!id || !selectedDate) {
         setAvailableSlots([]);
         return;
       }
 
       setSlotsLoading(true);
-      setSelectedTime(''); // Resetear la hora si el usuario cambia la fecha o el servicio
 
       try {
-        const slots = await storeService.getAvailability(
-          id,
-          selectedServiceId,
-          selectedDate,
-        );
+        const slots = await storeService.getAvailability(id, selectedDate);
         setAvailableSlots(slots);
       } catch (err) {
-        console.error('Error al cargar disponibilidad', err);
+        console.error('Error al cargar los horarios disponibles', err);
         setAvailableSlots([]);
       } finally {
         setSlotsLoading(false);
@@ -110,29 +104,35 @@ function StoreDetailsContent() {
     };
 
     fetchAvailability();
-  }, [id, selectedServiceId, selectedDate]);
+  }, [id, selectedDate]);
 
   const handleConfirmAppointment = async () => {
-    if (!selectedServiceId || !selectedTime) return;
+    if (!selectedTime || !store) return;
 
     setConfirming(true);
     setConfirmError('');
-    setConfirmSuccess(false);
+    setConfirmedStatus(null);
 
     try {
-      await appointmentService.create({
+      const appointment = await appointmentService.create({
         store_id: id,
-        service_id: selectedServiceId,
-        start_time: buildStartTime(selectedDate, selectedTime),
+        start_time: buildStartTime(selectedDate, selectedTime, store.timezone),
       });
-      setConfirmSuccess(true);
+      setConfirmedStatus(appointment.status);
+      setAvailableSlots((prev) => prev.filter((time) => time !== selectedTime));
       setSelectedTime('');
     } catch (err: unknown) {
       console.error('Error al confirmar la cita', err);
       if (axios.isAxiosError(err)) {
-        setConfirmError(
-          err.response?.data?.detail || 'No se pudo confirmar la cita.',
-        );
+        if (err.response?.status === 409) {
+          setConfirmError(
+            'Ya tienes una cita pendiente o confirmada en esta tienda. No puedes agendar otra hasta que se complete o se cancele.',
+          );
+        } else {
+          setConfirmError(
+            err.response?.data?.detail || 'No se pudo confirmar la cita.',
+          );
+        }
       } else {
         setConfirmError('Ocurrió un error inesperado al confirmar la cita.');
       }
@@ -196,124 +196,92 @@ function StoreDetailsContent() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div>
-            <h2 className="text-xl font-medium text-white mb-6 tracking-tight">
-              1. Selecciona un servicio
-            </h2>
-            <div className="space-y-4">
-              {services.length === 0 ? (
-                <p className="text-neutral-500">
-                  No hay servicios disponibles.
+        <div className="max-w-md">
+          <h2 className="text-xl font-medium text-white mb-6 tracking-tight">
+            Elige fecha y hora
+          </h2>
+          <div className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-xl">
+            <div className="mb-6">
+              <label className="block text-sm text-neutral-400 mb-2">
+                Fecha
+              </label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => {
+                  setSelectedDate(e.target.value);
+                  setSelectedTime('');
+                }}
+                className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-neutral-500 color-scheme-dark"
+                style={{ colorScheme: 'dark' }}
+              />
+            </div>
+
+            <div className="mb-8">
+              <label className="block text-sm text-neutral-400 mb-2">
+                Hora
+              </label>
+
+              {slotsLoading ? (
+                <p className="text-neutral-500 text-sm">
+                  Consultando horarios...
+                </p>
+              ) : !daySchedule || daySchedule.is_closed ? (
+                <p className="text-red-400 text-sm">
+                  La tienda está cerrada este día.
+                </p>
+              ) : availableSlots.length === 0 ? (
+                <p className="text-neutral-500 text-sm">
+                  No hay horarios disponibles este día.
                 </p>
               ) : (
-                services.map((service) => (
-                  <div
-                    key={service.id}
-                    onClick={() => setSelectedServiceId(service.id)}
-                    className={`bg-neutral-900/50 border p-4 rounded-xl cursor-pointer transition-colors ${
-                      selectedServiceId === service.id
-                        ? 'border-white'
-                        : 'border-neutral-800 hover:border-neutral-500'
-                    }`}
-                  >
-                    <div className="flex justify-between items-center mb-1">
-                      <h3 className="text-white font-medium">{service.name}</h3>
-                      <span className="text-neutral-400">
-                        ${service.price.toFixed(2)}
-                      </span>
-                    </div>
-                    {service.description && (
-                      <p className="text-sm text-neutral-400 mb-2 line-clamp-2">
-                        {service.description}
-                      </p>
-                    )}
-                    <p className="text-sm text-neutral-500">
-                      {service.duration_minutes} min
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div>
-            <h2 className="text-xl font-medium text-white mb-6 tracking-tight">
-              2. Elige fecha y hora
-            </h2>
-            <div className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-xl">
-              <div className="mb-6">
-                <label className="block text-sm text-neutral-400 mb-2">
-                  Fecha
-                </label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-neutral-500 color-scheme-dark"
-                  style={{ colorScheme: 'dark' }}
-                />
-              </div>
-
-              <div className="mb-8">
-                <label className="block text-sm text-neutral-400 mb-2">
-                  Horas disponibles
-                </label>
                 <div className="grid grid-cols-3 gap-3">
-                  {slotsLoading ? (
-                    <p className="text-neutral-500 text-sm col-span-3">
-                      Calculando horarios...
-                    </p>
-                  ) : availableSlots.length === 0 &&
-                    selectedServiceId &&
-                    selectedDate ? (
-                    <p className="text-neutral-500 text-sm col-span-3">
-                      No hay horarios disponibles para esta fecha.
-                    </p>
-                  ) : availableSlots.length === 0 ? (
-                    <p className="text-neutral-500 text-sm col-span-3">
-                      Selecciona un servicio y fecha primero.
-                    </p>
-                  ) : (
-                    availableSlots.map((time) => (
-                      <button
-                        key={time}
-                        onClick={() => setSelectedTime(time)}
-                        className={`py-2 rounded-lg transition-colors border ${
-                          selectedTime === time
-                            ? 'bg-white text-black border-white'
-                            : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-neutral-500'
-                        }`}
-                      >
-                        {time}
-                      </button>
-                    ))
-                  )}
+                  {availableSlots.map((time) => (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() => setSelectedTime(time)}
+                      className={`py-2 rounded-lg transition-colors border ${
+                        selectedTime === time
+                          ? 'bg-white text-black border-white'
+                          : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-neutral-500'
+                      }`}
+                    >
+                      {time}
+                    </button>
+                  ))}
                 </div>
-              </div>
-
-              {confirmError && (
-                <p className="text-red-400 text-sm mb-4">{confirmError}</p>
               )}
-              {confirmSuccess && (
-                <p className="text-green-400 text-sm mb-4">
-                  ¡Cita confirmada con éxito!
-                </p>
-              )}
-
-              <button
-                onClick={handleConfirmAppointment}
-                disabled={
-                  !selectedServiceId ||
-                  !selectedDate ||
-                  !selectedTime ||
-                  confirming
-                }
-                className="w-full bg-white text-black font-medium py-3 px-4 rounded-lg hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {confirming ? 'Confirmando...' : 'Confirmar Cita'}
-              </button>
             </div>
+
+            {confirmError && (
+              <p className="text-red-400 text-sm mb-4">{confirmError}</p>
+            )}
+            {confirmedStatus === 'confirmed' && (
+              <p className="text-green-400 text-sm mb-4">
+                ¡Cita confirmada con éxito!
+              </p>
+            )}
+            {confirmedStatus === 'pending' && (
+              <p className="text-yellow-400 text-sm mb-4">
+                Tu cita quedó pendiente de confirmación por parte de la
+                tienda.
+              </p>
+            )}
+
+            <button
+              onClick={handleConfirmAppointment}
+              disabled={
+                !selectedDate ||
+                !selectedTime ||
+                !daySchedule ||
+                daySchedule.is_closed ||
+                confirming
+              }
+              className="w-full bg-white text-black font-medium py-3 px-4 rounded-lg hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {confirming ? 'Confirmando...' : 'Confirmar Cita'}
+            </button>
           </div>
         </div>
       </main>
