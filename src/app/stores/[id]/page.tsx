@@ -17,6 +17,23 @@ function getDayOfWeek(date: string): number {
   return new Date(`${date}T00:00:00`).getDay();
 }
 
+function getTodayDateString(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+function getTomorrowDateString(): string {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return tomorrow.toISOString().split('T')[0];
+}
+
+// Si la tienda no permite citas el mismo día, la fecha mínima seleccionable es mañana.
+function getMinSelectableDate(store: Store): string {
+  return store.allow_same_day_appointments
+    ? getTodayDateString()
+    : getTomorrowDateString();
+}
+
 // Combina fecha ("YYYY-MM-DD") y hora ("HH:mm") interpretándolas en la zona
 // horaria de la tienda (no la del navegador) y devuelve un ISO 8601 con su
 // offset correspondiente, ej. "2026-10-28T09:00:00-05:00".
@@ -37,14 +54,13 @@ function StoreDetailsContent() {
   const [error, setError] = useState('');
 
   // Scheduling statuses
-  const [selectedDate, setSelectedDate] = useState<string>(() =>
-    new Date().toISOString().split('T')[0],
-  );
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString);
   const [selectedTime, setSelectedTime] = useState<string>('');
 
   // Horarios disponibles para la fecha elegida
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState('');
 
   // Confirmation statuses
   const [confirming, setConfirming] = useState(false);
@@ -58,6 +74,9 @@ function StoreDetailsContent() {
       try {
         const storeData = await storeService.getById(id);
         setStore(storeData);
+
+        const minDate = getMinSelectableDate(storeData);
+        setSelectedDate((prev) => (prev < minDate ? minDate : prev));
       } catch (err: unknown) {
         console.error(err);
         if (axios.isAxiosError(err)) {
@@ -91,13 +110,24 @@ function StoreDetailsContent() {
       }
 
       setSlotsLoading(true);
+      setSlotsError('');
 
       try {
         const slots = await storeService.getAvailability(id, selectedDate);
         setAvailableSlots(slots);
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('Error al cargar los horarios disponibles', err);
         setAvailableSlots([]);
+        if (axios.isAxiosError(err)) {
+          setSlotsError(
+            err.response?.data?.detail ||
+              'No se pudo cargar los horarios disponibles.',
+          );
+        } else {
+          setSlotsError(
+            'Ocurrió un error inesperado al cargar los horarios disponibles.',
+          );
+        }
       } finally {
         setSlotsLoading(false);
       }
@@ -208,6 +238,7 @@ function StoreDetailsContent() {
               <input
                 type="date"
                 value={selectedDate}
+                min={getMinSelectableDate(store)}
                 onChange={(e) => {
                   setSelectedDate(e.target.value);
                   setSelectedTime('');
@@ -226,6 +257,8 @@ function StoreDetailsContent() {
                 <p className="text-neutral-500 text-sm">
                   Consultando horarios...
                 </p>
+              ) : slotsError ? (
+                <p className="text-red-400 text-sm">{slotsError}</p>
               ) : !daySchedule || daySchedule.is_closed ? (
                 <p className="text-red-400 text-sm">
                   La tienda está cerrada este día.
