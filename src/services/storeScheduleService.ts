@@ -18,13 +18,6 @@ export interface UpdateStoreScheduleRequest {
 }
 
 export const storeScheduleService = {
-  getByStoreId: async (storeId: string): Promise<StoreSchedule[]> => {
-    const response = await apiClient.get<StoreSchedule[]>(
-      `/stores/${storeId}/schedules`,
-    );
-    return response.data;
-  },
-
   update: async (
     storeId: string,
     dayOfWeek: number,

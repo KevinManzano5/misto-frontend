@@ -134,7 +134,7 @@ function StoreSettingsContent() {
         <h2 className="text-xl font-medium text-white tracking-tight mt-10 mb-6">
           Horarios por día
         </h2>
-        <StoreSchedulesSection storeId={store.id} />
+        <StoreSchedulesSection storeId={store.id} schedules={store.schedules} />
       </main>
     </div>
   );

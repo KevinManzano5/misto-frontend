@@ -3,14 +3,12 @@ import { apiClient } from '@/lib/apiClient';
 // 1. Definimos las interfaces TypeScript basándonos en los structs de tu Golang
 export interface CreateAppointmentRequest {
   store_id: string;
-  service_id: string;
   start_time: string; // ISO 8601 string, manejado por time.Time en Go
 }
 
 export interface AppointmentResponse {
   id: string;
   store_id: string;
-  service_id: string;
   client_id: string;
   start_time: string;
   end_time: string;

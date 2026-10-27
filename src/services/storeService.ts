@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/apiClient';
+import { StoreSchedule } from './storeScheduleService';
 
 export interface Store {
   id: string;
@@ -6,17 +7,11 @@ export interface Store {
   name: string;
   description: string;
   is_active: boolean;
-}
-
-// Interface for store services
-export interface StoreServiceItem {
-  id: string;
-  store_id: string;
-  name: string;
-  description: string;
-  duration_minutes: number;
-  price: number;
-  is_active: boolean;
+  appointment_duration: number; // minutos
+  timezone: string;
+  schedules: StoreSchedule[];
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateStoreRequest {
@@ -43,25 +38,11 @@ export const storeService = {
     return response.data;
   },
 
-  // Obtain the services associated with a store
-  getServices: async (storeId: string): Promise<StoreServiceItem[]> => {
-    const response = await apiClient.get<StoreServiceItem[]>(
-      `/stores/${storeId}/services`,
-    );
-    return response.data;
-  },
-
-  // Obtain the available time slots for a specific date and service
-  getAvailability: async (
-    storeId: string,
-    serviceId: string,
-    date: string,
-  ): Promise<string[]> => {
+  // Obtiene los horarios disponibles ("HH:mm") para una fecha dada
+  getAvailability: async (storeId: string, date: string): Promise<string[]> => {
     const response = await apiClient.get<string[]>(
       `/stores/${storeId}/availability`,
-      {
-        params: { serviceId, date },
-      },
+      { params: { date } },
     );
     return response.data;
   },
