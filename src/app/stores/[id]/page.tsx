@@ -6,7 +6,10 @@ import Link from 'next/link';
 import axios from 'axios';
 import { DateTime } from 'luxon';
 import { storeService, Store } from '@/services/storeService';
-import { appointmentService } from '@/services/appointmentService';
+import {
+  appointmentService,
+  AppointmentStatus,
+} from '@/services/appointmentService';
 import UserMenu from '@/components/UserMenu';
 
 // Evita que "YYYY-MM-DD" se interprete como UTC y cambie de día por el offset local.
@@ -46,7 +49,8 @@ function StoreDetailsContent() {
   // Confirmation statuses
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState('');
-  const [confirmSuccess, setConfirmSuccess] = useState(false);
+  const [confirmedStatus, setConfirmedStatus] =
+    useState<AppointmentStatus | null>(null);
 
   // Carga inicial de la tienda
   useEffect(() => {
@@ -107,22 +111,28 @@ function StoreDetailsContent() {
 
     setConfirming(true);
     setConfirmError('');
-    setConfirmSuccess(false);
+    setConfirmedStatus(null);
 
     try {
-      await appointmentService.create({
+      const appointment = await appointmentService.create({
         store_id: id,
         start_time: buildStartTime(selectedDate, selectedTime, store.timezone),
       });
-      setConfirmSuccess(true);
+      setConfirmedStatus(appointment.status);
       setAvailableSlots((prev) => prev.filter((time) => time !== selectedTime));
       setSelectedTime('');
     } catch (err: unknown) {
       console.error('Error al confirmar la cita', err);
       if (axios.isAxiosError(err)) {
-        setConfirmError(
-          err.response?.data?.detail || 'No se pudo confirmar la cita.',
-        );
+        if (err.response?.status === 409) {
+          setConfirmError(
+            'Ya tienes una cita pendiente o confirmada en esta tienda. No puedes agendar otra hasta que se complete o se cancele.',
+          );
+        } else {
+          setConfirmError(
+            err.response?.data?.detail || 'No se pudo confirmar la cita.',
+          );
+        }
       } else {
         setConfirmError('Ocurrió un error inesperado al confirmar la cita.');
       }
@@ -247,9 +257,15 @@ function StoreDetailsContent() {
             {confirmError && (
               <p className="text-red-400 text-sm mb-4">{confirmError}</p>
             )}
-            {confirmSuccess && (
+            {confirmedStatus === 'confirmed' && (
               <p className="text-green-400 text-sm mb-4">
                 ¡Cita confirmada con éxito!
+              </p>
+            )}
+            {confirmedStatus === 'pending' && (
+              <p className="text-yellow-400 text-sm mb-4">
+                Tu cita quedó pendiente de confirmación por parte de la
+                tienda.
               </p>
             )}
 

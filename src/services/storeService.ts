@@ -9,6 +9,7 @@ export interface Store {
   is_active: boolean;
   appointment_duration: number; // minutos
   timezone: string;
+  auto_confirm_appointments: boolean;
   schedules: StoreSchedule[];
   created_at: string;
   updated_at: string;
@@ -17,6 +18,10 @@ export interface Store {
 export interface CreateStoreRequest {
   name: string;
   description: string;
+}
+
+export interface UpdateStoreRequest {
+  auto_confirm_appointments: boolean;
 }
 
 export const storeService = {
@@ -44,6 +49,12 @@ export const storeService = {
       `/stores/${storeId}/availability`,
       { params: { date } },
     );
+    return response.data;
+  },
+
+  // Actualiza la configuración de la tienda
+  update: async (id: string, data: UpdateStoreRequest): Promise<Store> => {
+    const response = await apiClient.patch<Store>(`/stores/${id}`, data);
     return response.data;
   },
 };
