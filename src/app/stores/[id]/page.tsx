@@ -11,6 +11,7 @@ import {
   AppointmentStatus,
 } from '@/services/appointmentService';
 import UserMenu from '@/components/UserMenu';
+import Sidebar from '@/components/Sidebar';
 
 // Evita que "YYYY-MM-DD" se interprete como UTC y cambie de día por el offset local.
 function getDayOfWeek(date: string): number {
@@ -198,18 +199,21 @@ function StoreDetailsContent() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-300 font-sans pb-12">
-      <nav className="border-b border-neutral-800 bg-neutral-950 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
-        <Link
-          href="/"
-          className="text-xl font-semibold text-white tracking-tight hover:text-neutral-300 transition-colors"
-        >
-          Misto
-        </Link>
-        <UserMenu />
-      </nav>
+    <div className="min-h-screen bg-neutral-950 text-neutral-300 font-sans flex">
+      <Sidebar />
 
-      <main className="max-w-4xl mx-auto px-6 py-8">
+      <div className="flex-1 flex flex-col pb-12">
+        <nav className="border-b border-neutral-800 bg-neutral-950 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
+          <Link
+            href="/"
+            className="text-xl font-semibold text-white tracking-tight hover:text-neutral-300 transition-colors"
+          >
+            Misto
+          </Link>
+          <UserMenu />
+        </nav>
+
+        <main className="max-w-4xl mx-auto px-6 py-8 w-full">
         <button
           onClick={() => router.back()}
           className="text-sm text-neutral-500 hover:text-white transition-colors mb-8 flex items-center gap-2"
@@ -317,7 +321,8 @@ function StoreDetailsContent() {
             </button>
           </div>
         </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

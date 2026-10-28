@@ -12,13 +12,22 @@ const STATUS_LABELS: Record<StoreAppointment['status'], string> = {
   confirmed: 'Confirmada',
   pending: 'Pendiente',
   cancelled: 'Cancelada',
+  completed: 'Completada',
+  expired: 'Expirada',
 };
 
 const STATUS_STYLES: Record<StoreAppointment['status'], string> = {
   confirmed: 'bg-green-950/40 text-green-400 border-green-900/50',
   pending: 'bg-yellow-950/40 text-yellow-400 border-yellow-900/50',
   cancelled: 'bg-neutral-800/40 text-neutral-400 border-neutral-700/50',
+  completed: 'bg-blue-950/40 text-blue-400 border-blue-900/50',
+  expired: 'bg-neutral-800/40 text-neutral-500 border-neutral-700/50',
 };
+
+const DATE_FILTER_DEBOUNCE_MS = 1000;
+
+const isValidDate = (value: string) =>
+  value === '' || DateTime.fromISO(value).isValid;
 
 interface StoreAppointmentsSectionProps {
   storeId: string;
@@ -33,15 +42,55 @@ export default function StoreAppointmentsSection({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const today = DateTime.now().setZone(timezone).toISODate() ?? '';
+
+  // Valores que el usuario edita directamente en los inputs.
+  const [startDateInput, setStartDateInput] = useState(today);
+  const [endDateInput, setEndDateInput] = useState(today);
+
+  // Valores "debounced": solo se actualizan 3s después de que el usuario
+  // deja de escribir, y son los que disparan la request al backend.
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(today);
+
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [actionErrors, setActionErrors] = useState<Record<string, string>>(
     {},
   );
 
+  const dateRangeError =
+    !isValidDate(startDateInput) || !isValidDate(endDateInput)
+      ? 'La fecha ingresada no es válida.'
+      : startDateInput && endDateInput && startDateInput > endDateInput
+        ? 'La fecha "Desde" no puede ser posterior a la fecha "Hasta".'
+        : '';
+
   useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setStartDate(startDateInput);
+      setEndDate(endDateInput);
+    }, DATE_FILTER_DEBOUNCE_MS);
+
+    return () => clearTimeout(timeoutId);
+  }, [startDateInput, endDateInput]);
+
+  useEffect(() => {
+    if (
+      !isValidDate(startDate) ||
+      !isValidDate(endDate) ||
+      (startDate && endDate && startDate > endDate)
+    ) {
+      return;
+    }
+
     const fetchAppointments = async () => {
+      setLoading(true);
+      setError('');
       try {
-        const data = await appointmentService.getByStoreId(storeId);
+        const data = await appointmentService.getByStoreId(storeId, {
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
+        });
         const sorted = [...data].sort(
           (a, b) =>
             new Date(a.start_time).getTime() -
@@ -63,31 +112,28 @@ export default function StoreAppointmentsSection({
     };
 
     fetchAppointments();
-  }, [storeId]);
+  }, [storeId, startDate, endDate]);
 
-  const handleUpdateStatus = async (
-    appointmentId: string,
-    status: 'confirmed' | 'cancelled',
-  ) => {
+  const handleClearFilters = () => {
+    setStartDateInput('');
+    setEndDateInput('');
+  };
+
+  const handleApprove = async (appointmentId: string) => {
     setUpdatingId(appointmentId);
     setActionErrors((prev) => ({ ...prev, [appointmentId]: '' }));
 
     try {
-      await appointmentService.updateStatus(appointmentId, { status });
-
-      if (status === 'cancelled') {
-        setAppointments((prev) =>
-          prev.filter((appointment) => appointment.id !== appointmentId),
-        );
-      } else {
-        setAppointments((prev) =>
-          prev.map((appointment) =>
-            appointment.id === appointmentId
-              ? { ...appointment, status }
-              : appointment,
-          ),
-        );
-      }
+      await appointmentService.updateStatus(appointmentId, {
+        status: 'confirmed',
+      });
+      setAppointments((prev) =>
+        prev.map((appointment) =>
+          appointment.id === appointmentId
+            ? { ...appointment, status: 'confirmed' }
+            : appointment,
+        ),
+      );
     } catch (err: unknown) {
       console.error('Error al actualizar el estado de la cita', err);
       const message = isAxiosError(err)
@@ -99,25 +145,90 @@ export default function StoreAppointmentsSection({
     }
   };
 
-  if (loading) {
-    return <p className="text-neutral-500 animate-pulse">Cargando citas...</p>;
-  }
+  const handleCancel = async (appointmentId: string) => {
+    setUpdatingId(appointmentId);
+    setActionErrors((prev) => ({ ...prev, [appointmentId]: '' }));
 
-  if (error) {
-    return <p className="text-red-400 text-sm">{error}</p>;
-  }
-
-  if (appointments.length === 0) {
-    return (
-      <p className="text-neutral-500">
-        No hay citas pendientes ni confirmadas.
-      </p>
-    );
-  }
+    try {
+      await appointmentService.cancel(appointmentId);
+      setAppointments((prev) =>
+        prev.map((appointment) =>
+          appointment.id === appointmentId
+            ? { ...appointment, status: 'cancelled' }
+            : appointment,
+        ),
+      );
+    } catch (err: unknown) {
+      console.error('Error al cancelar la cita', err);
+      const message = isAxiosError(err)
+        ? err.response?.data?.detail || 'No se pudo cancelar la cita.'
+        : 'Ocurrió un error inesperado al cancelar la cita.';
+      setActionErrors((prev) => ({ ...prev, [appointmentId]: message }));
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   return (
     <div className="space-y-4">
-      {appointments.map((appointment) => {
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="appointments-start-date"
+            className="text-xs text-neutral-500"
+          >
+            Desde
+          </label>
+          <input
+            id="appointments-start-date"
+            type="date"
+            value={startDateInput}
+            onChange={(e) => setStartDateInput(e.target.value)}
+            className="bg-neutral-900 border border-neutral-800 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="appointments-end-date"
+            className="text-xs text-neutral-500"
+          >
+            Hasta
+          </label>
+          <input
+            id="appointments-end-date"
+            type="date"
+            value={endDateInput}
+            onChange={(e) => setEndDateInput(e.target.value)}
+            className="bg-neutral-900 border border-neutral-800 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={handleClearFilters}
+          className="text-sm text-neutral-400 hover:text-white transition-colors py-2 px-3 rounded-lg border border-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+        >
+          Ver todas las citas
+        </button>
+      </div>
+
+      {!dateRangeError && loading && (
+        <p className="text-neutral-500 animate-pulse">Cargando citas...</p>
+      )}
+
+      {(dateRangeError || (!loading && error)) && (
+        <p className="text-red-400 text-sm">{dateRangeError || error}</p>
+      )}
+
+      {!dateRangeError && !loading && !error && appointments.length === 0 && (
+        <p className="text-neutral-500">
+          No hay citas para el rango seleccionado.
+        </p>
+      )}
+
+      {!dateRangeError &&
+        !loading &&
+        !error &&
+        appointments.map((appointment) => {
         const start = DateTime.fromISO(appointment.start_time, {
           zone: 'utc',
         }).setZone(timezone);
@@ -169,7 +280,7 @@ export default function StoreAppointmentsSection({
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => handleUpdateStatus(appointment.id, 'confirmed')}
+                  onClick={() => handleApprove(appointment.id)}
                   disabled={isUpdating}
                   className="text-sm bg-white text-black font-medium py-2 px-4 rounded-lg hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-neutral-500"
                 >
@@ -177,7 +288,7 @@ export default function StoreAppointmentsSection({
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleUpdateStatus(appointment.id, 'cancelled')}
+                  onClick={() => handleCancel(appointment.id)}
                   disabled={isUpdating}
                   className="text-sm text-red-400 hover:text-red-300 transition-colors py-2 px-4 rounded-lg border border-red-900/50 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-neutral-500"
                 >
@@ -189,7 +300,7 @@ export default function StoreAppointmentsSection({
             {appointment.status === 'confirmed' && (
               <button
                 type="button"
-                onClick={() => handleUpdateStatus(appointment.id, 'cancelled')}
+                onClick={() => handleCancel(appointment.id)}
                 disabled={isUpdating}
                 className="text-sm text-red-400 hover:text-red-300 transition-colors py-2 px-4 rounded-lg border border-red-900/50 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-neutral-500"
               >
