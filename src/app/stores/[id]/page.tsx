@@ -11,10 +11,28 @@ import {
   AppointmentStatus,
 } from '@/services/appointmentService';
 import UserMenu from '@/components/UserMenu';
+import Sidebar from '@/components/Sidebar';
 
 // Evita que "YYYY-MM-DD" se interprete como UTC y cambie de día por el offset local.
 function getDayOfWeek(date: string): number {
   return new Date(`${date}T00:00:00`).getDay();
+}
+
+function getTodayDateString(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+function getTomorrowDateString(): string {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return tomorrow.toISOString().split('T')[0];
+}
+
+// Si la tienda no permite citas el mismo día, la fecha mínima seleccionable es mañana.
+function getMinSelectableDate(store: Store): string {
+  return store.allow_same_day_appointments
+    ? getTodayDateString()
+    : getTomorrowDateString();
 }
 
 // Combina fecha ("YYYY-MM-DD") y hora ("HH:mm") interpretándolas en la zona
@@ -37,14 +55,13 @@ function StoreDetailsContent() {
   const [error, setError] = useState('');
 
   // Scheduling statuses
-  const [selectedDate, setSelectedDate] = useState<string>(() =>
-    new Date().toISOString().split('T')[0],
-  );
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString);
   const [selectedTime, setSelectedTime] = useState<string>('');
 
   // Horarios disponibles para la fecha elegida
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState('');
 
   // Confirmation statuses
   const [confirming, setConfirming] = useState(false);
@@ -58,6 +75,9 @@ function StoreDetailsContent() {
       try {
         const storeData = await storeService.getById(id);
         setStore(storeData);
+
+        const minDate = getMinSelectableDate(storeData);
+        setSelectedDate((prev) => (prev < minDate ? minDate : prev));
       } catch (err: unknown) {
         console.error(err);
         if (axios.isAxiosError(err)) {
@@ -91,13 +111,24 @@ function StoreDetailsContent() {
       }
 
       setSlotsLoading(true);
+      setSlotsError('');
 
       try {
         const slots = await storeService.getAvailability(id, selectedDate);
         setAvailableSlots(slots);
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('Error al cargar los horarios disponibles', err);
         setAvailableSlots([]);
+        if (axios.isAxiosError(err)) {
+          setSlotsError(
+            err.response?.data?.detail ||
+              'No se pudo cargar los horarios disponibles.',
+          );
+        } else {
+          setSlotsError(
+            'Ocurrió un error inesperado al cargar los horarios disponibles.',
+          );
+        }
       } finally {
         setSlotsLoading(false);
       }
@@ -168,18 +199,21 @@ function StoreDetailsContent() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-300 font-sans pb-12">
-      <nav className="border-b border-neutral-800 bg-neutral-950 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
-        <Link
-          href="/"
-          className="text-xl font-semibold text-white tracking-tight hover:text-neutral-300 transition-colors"
-        >
-          Misto
-        </Link>
-        <UserMenu />
-      </nav>
+    <div className="min-h-screen bg-neutral-950 text-neutral-300 font-sans flex">
+      <Sidebar />
 
-      <main className="max-w-4xl mx-auto px-6 py-8">
+      <div className="flex-1 flex flex-col pb-12">
+        <nav className="border-b border-neutral-800 bg-neutral-950 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
+          <Link
+            href="/"
+            className="text-xl font-semibold text-white tracking-tight hover:text-neutral-300 transition-colors"
+          >
+            Misto
+          </Link>
+          <UserMenu />
+        </nav>
+
+        <main className="max-w-4xl mx-auto px-6 py-8 w-full">
         <button
           onClick={() => router.back()}
           className="text-sm text-neutral-500 hover:text-white transition-colors mb-8 flex items-center gap-2"
@@ -191,9 +225,29 @@ function StoreDetailsContent() {
           <h1 className="text-4xl font-medium text-white tracking-tight mb-4">
             {store.name}
           </h1>
-          <p className="text-neutral-400 leading-relaxed text-lg">
+          <p className="text-neutral-400 leading-relaxed text-lg mb-6">
             {store.description}
           </p>
+          <div className="flex flex-col gap-2 text-sm text-neutral-400">
+            {store.address && (
+              <p className="flex items-center gap-2">
+                <span className="text-neutral-500">Dirección:</span>
+                {store.address}
+              </p>
+            )}
+            {store.phone_number && (
+              <p className="flex items-center gap-2">
+                <span className="text-neutral-500">Teléfono:</span>
+                {store.phone_number}
+              </p>
+            )}
+            {store.email && (
+              <p className="flex items-center gap-2">
+                <span className="text-neutral-500">Correo:</span>
+                {store.email}
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="max-w-md">
@@ -208,6 +262,7 @@ function StoreDetailsContent() {
               <input
                 type="date"
                 value={selectedDate}
+                min={getMinSelectableDate(store)}
                 onChange={(e) => {
                   setSelectedDate(e.target.value);
                   setSelectedTime('');
@@ -226,6 +281,8 @@ function StoreDetailsContent() {
                 <p className="text-neutral-500 text-sm">
                   Consultando horarios...
                 </p>
+              ) : slotsError ? (
+                <p className="text-red-400 text-sm">{slotsError}</p>
               ) : !daySchedule || daySchedule.is_closed ? (
                 <p className="text-red-400 text-sm">
                   La tienda está cerrada este día.
@@ -284,7 +341,8 @@ function StoreDetailsContent() {
             </button>
           </div>
         </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

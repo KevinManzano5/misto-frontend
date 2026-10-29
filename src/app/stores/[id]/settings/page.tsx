@@ -9,6 +9,7 @@ import { storeService, Store } from '@/services/storeService';
 import { getUserIdFromToken } from '@/lib/jwt';
 import StoreSchedulesSection from './StoreSchedulesSection';
 import StoreAppointmentsSection from './StoreAppointmentsSection';
+import StoreInfoSection from './StoreInfoSection';
 
 type SettingsTab = 'config' | 'management';
 
@@ -24,6 +25,9 @@ function StoreSettingsContent() {
 
   const [savingAutoConfirm, setSavingAutoConfirm] = useState(false);
   const [autoConfirmError, setAutoConfirmError] = useState('');
+
+  const [savingAllowSameDay, setSavingAllowSameDay] = useState(false);
+  const [allowSameDayError, setAllowSameDayError] = useState('');
 
   useEffect(() => {
     const fetchStore = async () => {
@@ -82,6 +86,34 @@ function StoreSettingsContent() {
       }
     } finally {
       setSavingAutoConfirm(false);
+    }
+  };
+
+  const handleToggleAllowSameDay = async () => {
+    if (!store) return;
+
+    setSavingAllowSameDay(true);
+    setAllowSameDayError('');
+
+    try {
+      const updated = await storeService.update(store.id, {
+        allow_same_day_appointments: !store.allow_same_day_appointments,
+      });
+      setStore(updated);
+    } catch (err: unknown) {
+      console.error('Error al actualizar las citas el mismo día', err);
+      if (isAxiosError(err)) {
+        setAllowSameDayError(
+          err.response?.data?.detail ||
+            'No se pudo actualizar la configuración de citas el mismo día.',
+        );
+      } else {
+        setAllowSameDayError(
+          'Ocurrió un error inesperado al actualizar la configuración.',
+        );
+      }
+    } finally {
+      setSavingAllowSameDay(false);
     }
   };
 
@@ -174,23 +206,9 @@ function StoreSettingsContent() {
 
         {activeTab === 'config' ? (
           <>
-            <div className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-xl space-y-6">
-              <div>
-                <p className="text-sm text-neutral-500 mb-1">Nombre</p>
-                <p className="text-white">{store.name}</p>
-              </div>
-              <div>
-                <p className="text-sm text-neutral-500 mb-1">Descripción</p>
-                <p className="text-neutral-300 leading-relaxed">
-                  {store.description || 'Sin descripción.'}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-neutral-500 mb-1">Estado</p>
-                <p className="text-neutral-300">
-                  {store.is_active ? 'Activa' : 'Inactiva'}
-                </p>
-              </div>
+            <StoreInfoSection store={store} onUpdated={setStore} />
+
+            <div className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-xl space-y-6 mt-6">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-white">Autoaceptar citas</p>
@@ -223,6 +241,39 @@ function StoreSettingsContent() {
               </div>
               {autoConfirmError && (
                 <p className="text-red-400 text-sm">{autoConfirmError}</p>
+              )}
+
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-white">Citas el mismo día</p>
+                  <p className="text-sm text-neutral-500">
+                    Permite que los clientes agenden citas para el día actual.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={store.allow_same_day_appointments}
+                  aria-label="Citas el mismo día"
+                  onClick={handleToggleAllowSameDay}
+                  disabled={savingAllowSameDay}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-1 focus:ring-neutral-500 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    store.allow_same_day_appointments
+                      ? 'bg-white'
+                      : 'bg-neutral-800'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full transition-transform ${
+                      store.allow_same_day_appointments
+                        ? 'translate-x-6 bg-black'
+                        : 'translate-x-1 bg-neutral-400'
+                    }`}
+                  />
+                </button>
+              </div>
+              {allowSameDayError && (
+                <p className="text-red-400 text-sm">{allowSameDayError}</p>
               )}
             </div>
 

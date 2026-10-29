@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { isAxiosError } from 'axios';
 import { storeService, Store } from '@/services/storeService';
 import UserMenu from '@/components/UserMenu';
+import Sidebar from '@/components/Sidebar';
 
 export default function HomePage() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -38,17 +39,21 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-300 font-sans">
-      {/* Navbar Superior */}
-      <nav className="border-b border-neutral-800 bg-neutral-950 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
-        <h1 className="text-xl font-semibold text-white tracking-tight">
-          Misto
-        </h1>
-        <UserMenu />
-      </nav>
+    <div className="min-h-screen bg-neutral-950 text-neutral-300 font-sans flex">
+      <Sidebar />
 
-      {/* Contenido Principal */}
-      <main className="max-w-5xl mx-auto px-6 py-12">
+      <div className="flex-1 flex flex-col">
+        {/* Navbar Superior */}
+        <nav className="border-b border-neutral-800 bg-neutral-950 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
+          <h1 className="text-xl font-semibold text-white tracking-tight">
+            Misto
+          </h1>
+          <UserMenu />
+        </nav>
+
+        {/* Contenido Principal */}
+        <main className="max-w-5xl mx-auto px-6 py-12 w-full">
+
         <div className="mb-12 text-center">
           <h2 className="text-3xl font-medium text-white tracking-tight">
             Descubre servicios y agenda tu cita
@@ -98,7 +103,8 @@ export default function HomePage() {
             ))}
           </div>
         )}
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

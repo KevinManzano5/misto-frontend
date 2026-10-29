@@ -10,6 +10,10 @@ export interface Store {
   appointment_duration: number; // minutos
   timezone: string;
   auto_confirm_appointments: boolean;
+  email: string;
+  address: string;
+  phone_number: string;
+  allow_same_day_appointments: boolean;
   schedules: StoreSchedule[];
   created_at: string;
   updated_at: string;
@@ -21,7 +25,14 @@ export interface CreateStoreRequest {
 }
 
 export interface UpdateStoreRequest {
-  auto_confirm_appointments: boolean;
+  name?: string;
+  description?: string;
+  email?: string;
+  address?: string;
+  phone_number?: string;
+  is_active?: boolean;
+  auto_confirm_appointments?: boolean;
+  allow_same_day_appointments?: boolean;
 }
 
 export const storeService = {
