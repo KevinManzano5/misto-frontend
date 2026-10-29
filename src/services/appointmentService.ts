@@ -15,6 +15,7 @@ export type AppointmentStatus =
 
 export interface UpdateAppointmentStatusRequest {
   status: 'confirmed' | 'cancelled';
+  reason?: string;
 }
 
 export interface AppointmentResponse {
@@ -37,6 +38,7 @@ export interface StoreAppointment {
   client_email: string;
   client_first_name: string;
   client_last_name: string;
+  cancellation_reason?: string;
 }
 
 // Cita tal como la devuelve el historial del usuario (con el nombre de la
@@ -98,9 +100,10 @@ export const appointmentService = {
   },
 
   // Cancela una cita (pendiente o confirmada)
-  cancel: async (id: string): Promise<AppointmentResponse> => {
+  cancel: async (id: string, reason: string): Promise<AppointmentResponse> => {
     const response = await apiClient.patch<AppointmentResponse>(
       `/appointments/${id}/cancel`,
+      { reason },
     );
     return response.data;
   },

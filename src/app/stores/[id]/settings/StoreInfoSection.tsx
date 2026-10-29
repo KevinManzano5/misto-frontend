@@ -14,6 +14,7 @@ interface InfoFormState {
   description: string;
   email: string;
   address: string;
+  phone_number: string;
   is_active: boolean;
 }
 
@@ -23,6 +24,7 @@ function buildFormState(store: Store): InfoFormState {
     description: store.description,
     email: store.email,
     address: store.address,
+    phone_number: store.phone_number,
     is_active: store.is_active,
   };
 }
@@ -58,6 +60,7 @@ export default function StoreInfoSection({
       description: form.description,
       email: form.email,
       address: form.address,
+      phone_number: form.phone_number,
       is_active: form.is_active,
     };
 
@@ -115,6 +118,12 @@ export default function StoreInfoSection({
           <p className="text-sm text-neutral-500 mb-1">Dirección</p>
           <p className="text-neutral-300">
             {store.address || 'Sin dirección registrada.'}
+          </p>
+        </div>
+        <div>
+          <p className="text-sm text-neutral-500 mb-1">Teléfono</p>
+          <p className="text-neutral-300">
+            {store.phone_number || 'Sin teléfono registrado.'}
           </p>
         </div>
         <div>
@@ -210,6 +219,26 @@ export default function StoreInfoSection({
             setForm((prev) => ({ ...prev, address: e.target.value }))
           }
           placeholder="Dirección de la tienda"
+          className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-neutral-500"
+        />
+      </div>
+
+      <div>
+        <label
+          htmlFor="store-phone"
+          className="block text-sm text-neutral-500 mb-1"
+        >
+          Teléfono
+        </label>
+        <input
+          id="store-phone"
+          name="phone_number"
+          type="tel"
+          value={form.phone_number}
+          onChange={(e) =>
+            setForm((prev) => ({ ...prev, phone_number: e.target.value }))
+          }
+          placeholder="Teléfono de la tienda"
           className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-neutral-500"
         />
       </div>

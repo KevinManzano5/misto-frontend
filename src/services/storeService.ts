@@ -12,6 +12,7 @@ export interface Store {
   auto_confirm_appointments: boolean;
   email: string;
   address: string;
+  phone_number: string;
   allow_same_day_appointments: boolean;
   schedules: StoreSchedule[];
   created_at: string;
@@ -28,6 +29,7 @@ export interface UpdateStoreRequest {
   description?: string;
   email?: string;
   address?: string;
+  phone_number?: string;
   is_active?: boolean;
   auto_confirm_appointments?: boolean;
   allow_same_day_appointments?: boolean;

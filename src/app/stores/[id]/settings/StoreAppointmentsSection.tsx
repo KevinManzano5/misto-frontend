@@ -58,6 +58,10 @@ export default function StoreAppointmentsSection({
     {},
   );
 
+  // Id de la cita para la cual se está pidiendo la razón de cancelación/rechazo
+  const [cancelPromptId, setCancelPromptId] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+
   const dateRangeError =
     !isValidDate(startDateInput) || !isValidDate(endDateInput)
       ? 'La fecha ingresada no es válida.'
@@ -145,12 +149,25 @@ export default function StoreAppointmentsSection({
     }
   };
 
+  const handleOpenCancelPrompt = (appointmentId: string) => {
+    setActionErrors((prev) => ({ ...prev, [appointmentId]: '' }));
+    setCancelReason('');
+    setCancelPromptId(appointmentId);
+  };
+
+  const handleCloseCancelPrompt = () => {
+    setCancelPromptId(null);
+    setCancelReason('');
+  };
+
   const handleCancel = async (appointmentId: string) => {
+    if (!cancelReason.trim()) return;
+
     setUpdatingId(appointmentId);
     setActionErrors((prev) => ({ ...prev, [appointmentId]: '' }));
 
     try {
-      await appointmentService.cancel(appointmentId);
+      await appointmentService.cancel(appointmentId, cancelReason.trim());
       setAppointments((prev) =>
         prev.map((appointment) =>
           appointment.id === appointmentId
@@ -158,6 +175,8 @@ export default function StoreAppointmentsSection({
             : appointment,
         ),
       );
+      setCancelPromptId(null);
+      setCancelReason('');
     } catch (err: unknown) {
       console.error('Error al cancelar la cita', err);
       const message = isAxiosError(err)
@@ -270,42 +289,93 @@ export default function StoreAppointmentsSection({
               </p>
             </div>
 
+            {appointment.status === 'cancelled' &&
+              appointment.cancellation_reason && (
+                <div className="border-t border-neutral-800 pt-3">
+                  <p className="text-sm text-neutral-500 mb-1">
+                    Razón de la cancelación
+                  </p>
+                  <p className="text-sm text-neutral-300">
+                    {appointment.cancellation_reason}
+                  </p>
+                </div>
+              )}
+
             {actionErrors[appointment.id] && (
               <p className="text-red-400 text-sm">
                 {actionErrors[appointment.id]}
               </p>
             )}
 
-            {appointment.status === 'pending' && (
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleApprove(appointment.id)}
-                  disabled={isUpdating}
-                  className="text-sm bg-white text-black font-medium py-2 px-4 rounded-lg hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-neutral-500"
+            {cancelPromptId === appointment.id ? (
+              <div className="space-y-2 border-t border-neutral-800 pt-3">
+                <label
+                  htmlFor={`cancel-reason-${appointment.id}`}
+                  className="block text-sm text-neutral-400"
                 >
-                  {isUpdating ? 'Guardando...' : 'Aprobar'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleCancel(appointment.id)}
-                  disabled={isUpdating}
-                  className="text-sm text-red-400 hover:text-red-300 transition-colors py-2 px-4 rounded-lg border border-red-900/50 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-neutral-500"
-                >
-                  Rechazar
-                </button>
+                  Razón de la cancelación
+                </label>
+                <textarea
+                  id={`cancel-reason-${appointment.id}`}
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Indica el motivo..."
+                  rows={2}
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-neutral-500 resize-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleCancel(appointment.id)}
+                    disabled={isUpdating || !cancelReason.trim()}
+                    className="text-sm text-red-400 hover:text-red-300 transition-colors py-2 px-4 rounded-lg border border-red-900/50 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-neutral-500"
+                  >
+                    {isUpdating ? 'Guardando...' : 'Confirmar'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCloseCancelPrompt}
+                    disabled={isUpdating}
+                    className="text-sm text-neutral-400 hover:text-white transition-colors py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-neutral-500"
+                  >
+                    Volver
+                  </button>
+                </div>
               </div>
-            )}
+            ) : (
+              <>
+                {appointment.status === 'pending' && (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleApprove(appointment.id)}
+                      disabled={isUpdating}
+                      className="text-sm bg-white text-black font-medium py-2 px-4 rounded-lg hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-neutral-500"
+                    >
+                      {isUpdating ? 'Guardando...' : 'Aprobar'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenCancelPrompt(appointment.id)}
+                      disabled={isUpdating}
+                      className="text-sm text-red-400 hover:text-red-300 transition-colors py-2 px-4 rounded-lg border border-red-900/50 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-neutral-500"
+                    >
+                      Rechazar
+                    </button>
+                  </div>
+                )}
 
-            {appointment.status === 'confirmed' && (
-              <button
-                type="button"
-                onClick={() => handleCancel(appointment.id)}
-                disabled={isUpdating}
-                className="text-sm text-red-400 hover:text-red-300 transition-colors py-2 px-4 rounded-lg border border-red-900/50 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-neutral-500"
-              >
-                {isUpdating ? 'Guardando...' : 'Cancelar cita'}
-              </button>
+                {appointment.status === 'confirmed' && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenCancelPrompt(appointment.id)}
+                    disabled={isUpdating}
+                    className="text-sm text-red-400 hover:text-red-300 transition-colors py-2 px-4 rounded-lg border border-red-900/50 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-neutral-500"
+                  >
+                    Cancelar cita
+                  </button>
+                )}
+              </>
             )}
           </div>
         );

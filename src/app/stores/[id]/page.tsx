@@ -225,9 +225,29 @@ function StoreDetailsContent() {
           <h1 className="text-4xl font-medium text-white tracking-tight mb-4">
             {store.name}
           </h1>
-          <p className="text-neutral-400 leading-relaxed text-lg">
+          <p className="text-neutral-400 leading-relaxed text-lg mb-6">
             {store.description}
           </p>
+          <div className="flex flex-col gap-2 text-sm text-neutral-400">
+            {store.address && (
+              <p className="flex items-center gap-2">
+                <span className="text-neutral-500">Dirección:</span>
+                {store.address}
+              </p>
+            )}
+            {store.phone_number && (
+              <p className="flex items-center gap-2">
+                <span className="text-neutral-500">Teléfono:</span>
+                {store.phone_number}
+              </p>
+            )}
+            {store.email && (
+              <p className="flex items-center gap-2">
+                <span className="text-neutral-500">Correo:</span>
+                {store.email}
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="max-w-md">
