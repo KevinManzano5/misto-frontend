@@ -9,6 +9,7 @@ import { storeService, Store } from '@/services/storeService';
 import {
   appointmentService,
   AppointmentStatus,
+  MyStoreAppointment,
   PaymentMethod,
 } from '@/services/appointmentService';
 import UserMenu from '@/components/UserMenu';
@@ -47,6 +48,14 @@ function buildStartTime(date: string, time: string, storeTimezone: string): stri
   return startTime.toISO({ suppressMilliseconds: true }) as string;
 }
 
+const STATUS_LABELS: Record<AppointmentStatus, string> = {
+  confirmed: 'Confirmada',
+  pending: 'Pendiente',
+  cancelled: 'Cancelada',
+  completed: 'Completada',
+  expired: 'Expirada',
+};
+
 function StoreDetailsContent() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
@@ -60,6 +69,16 @@ function StoreDetailsContent() {
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethod | null>(null);
+
+  // Cita vigente del usuario en esta tienda (si ya tiene una, no se muestra el calendario)
+  const [existingAppointment, setExistingAppointment] =
+    useState<MyStoreAppointment | null>(null);
+  const [checkingExistingAppointment, setCheckingExistingAppointment] =
+    useState(true);
+  const [showCancelPrompt, setShowCancelPrompt] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [canceling, setCanceling] = useState(false);
+  const [cancelActionError, setCancelActionError] = useState('');
 
   // Horarios disponibles para la fecha elegida
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -97,6 +116,28 @@ function StoreDetailsContent() {
     };
 
     if (id) fetchStoreData();
+  }, [id]);
+
+  // Verifica si el usuario ya tiene una cita vigente en esta tienda
+  useEffect(() => {
+    const fetchExistingAppointment = async () => {
+      if (!id) return;
+
+      setCheckingExistingAppointment(true);
+
+      try {
+        const result = await appointmentService.getMyStatusForStore(id);
+        setExistingAppointment(
+          result.has_appointment ? result.appointment : null,
+        );
+      } catch (err: unknown) {
+        console.error('Error al verificar si ya tienes una cita', err);
+      } finally {
+        setCheckingExistingAppointment(false);
+      }
+    };
+
+    fetchExistingAppointment();
   }, [id]);
 
   const daySchedule = store
@@ -174,6 +215,45 @@ function StoreDetailsContent() {
       }
     } finally {
       setConfirming(false);
+    }
+  };
+
+  const handleOpenCancelPrompt = () => {
+    setCancelActionError('');
+    setCancelReason('');
+    setShowCancelPrompt(true);
+  };
+
+  const handleCloseCancelPrompt = () => {
+    setShowCancelPrompt(false);
+    setCancelReason('');
+  };
+
+  const handleCancelExistingAppointment = async () => {
+    if (!existingAppointment || !cancelReason.trim()) return;
+
+    setCanceling(true);
+    setCancelActionError('');
+
+    try {
+      await appointmentService.cancel(
+        existingAppointment.id,
+        cancelReason.trim(),
+      );
+      setExistingAppointment(null);
+      setShowCancelPrompt(false);
+      setCancelReason('');
+    } catch (err: unknown) {
+      console.error('Error al cancelar la cita', err);
+      if (axios.isAxiosError(err)) {
+        setCancelActionError(
+          err.response?.data?.detail || 'No se pudo cancelar la cita.',
+        );
+      } else {
+        setCancelActionError('Ocurrió un error inesperado al cancelar la cita.');
+      }
+    } finally {
+      setCanceling(false);
     }
   };
 
@@ -256,10 +336,100 @@ function StoreDetailsContent() {
         </div>
 
         <div className="max-w-md">
-          <h2 className="text-xl font-medium text-white mb-6 tracking-tight">
-            Elige fecha y hora
-          </h2>
-          <div className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-xl">
+          {checkingExistingAppointment ? (
+            <p className="text-neutral-500 text-sm animate-pulse">
+              Verificando citas existentes...
+            </p>
+          ) : existingAppointment ? (
+            <>
+              <h2 className="text-xl font-medium text-white mb-6 tracking-tight">
+                Ya tienes una cita en esta tienda
+              </h2>
+              <div className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-xl space-y-3">
+                <p className="text-neutral-400 text-sm mb-2">
+                  No puedes agendar otra hasta que esta se complete o se
+                  cancele.
+                </p>
+                <p className="text-white font-medium">
+                  {STATUS_LABELS[existingAppointment.status]} ·{' '}
+                  {DateTime.fromISO(existingAppointment.start_time, {
+                    zone: 'utc',
+                  })
+                    .toLocal()
+                    .toFormat('dd/MM/yyyy HH:mm')}
+                </p>
+
+                {cancelActionError && (
+                  <p className="text-red-400 text-sm">{cancelActionError}</p>
+                )}
+
+                {(existingAppointment.status === 'pending' ||
+                  existingAppointment.status === 'confirmed') &&
+                  (showCancelPrompt ? (
+                    <div className="space-y-2 border-t border-neutral-800 pt-3">
+                      <label
+                        htmlFor="cancel-reason"
+                        className="block text-sm text-neutral-400"
+                      >
+                        Razón de la cancelación
+                      </label>
+                      <textarea
+                        id="cancel-reason"
+                        value={cancelReason}
+                        onChange={(e) => setCancelReason(e.target.value)}
+                        placeholder="Indica el motivo..."
+                        rows={2}
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-neutral-500 resize-none"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleCancelExistingAppointment}
+                          disabled={canceling || !cancelReason.trim()}
+                          className="text-sm text-red-400 hover:text-red-300 transition-colors py-2 px-4 rounded-lg border border-red-900/50 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-neutral-500"
+                        >
+                          {canceling ? 'Cancelando...' : 'Confirmar'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCloseCancelPrompt}
+                          disabled={canceling}
+                          className="text-sm text-neutral-400 hover:text-white transition-colors py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-neutral-500"
+                        >
+                          Volver
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      {existingAppointment.payment_method ===
+                        'cash_on_site' && (
+                        <button
+                          type="button"
+                          disabled
+                          title="Próximamente"
+                          className="flex-1 text-sm text-neutral-300 py-2 px-4 rounded-lg border border-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-neutral-500"
+                        >
+                          Pagar con tarjeta
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleOpenCancelPrompt}
+                        className="flex-1 text-sm text-red-400 hover:text-red-300 transition-colors py-2 px-4 rounded-lg border border-red-900/50 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+                      >
+                        Cancelar cita
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <h2 className="text-xl font-medium text-white mb-6 tracking-tight">
+                Elige fecha y hora
+              </h2>
+              <div className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-xl">
             <div className="mb-6">
               <label className="block text-sm text-neutral-400 mb-2">
                 Fecha
@@ -375,7 +545,9 @@ function StoreDetailsContent() {
             >
               {confirming ? 'Confirmando...' : 'Confirmar Cita'}
             </button>
-          </div>
+              </div>
+            </>
+          )}
         </div>
         </main>
       </div>
