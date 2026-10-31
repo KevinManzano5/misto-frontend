@@ -9,6 +9,7 @@ import { storeService, Store } from '@/services/storeService';
 import {
   appointmentService,
   AppointmentStatus,
+  PaymentMethod,
 } from '@/services/appointmentService';
 import UserMenu from '@/components/UserMenu';
 import Sidebar from '@/components/Sidebar';
@@ -57,6 +58,8 @@ function StoreDetailsContent() {
   // Scheduling statuses
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString);
   const [selectedTime, setSelectedTime] = useState<string>('');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] =
+    useState<PaymentMethod | null>(null);
 
   // Horarios disponibles para la fecha elegida
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -138,7 +141,7 @@ function StoreDetailsContent() {
   }, [id, selectedDate]);
 
   const handleConfirmAppointment = async () => {
-    if (!selectedTime || !store) return;
+    if (!selectedTime || !store || !selectedPaymentMethod) return;
 
     setConfirming(true);
     setConfirmError('');
@@ -148,10 +151,12 @@ function StoreDetailsContent() {
       const appointment = await appointmentService.create({
         store_id: id,
         start_time: buildStartTime(selectedDate, selectedTime, store.timezone),
+        payment_method: selectedPaymentMethod,
       });
       setConfirmedStatus(appointment.status);
       setAvailableSlots((prev) => prev.filter((time) => time !== selectedTime));
       setSelectedTime('');
+      setSelectedPaymentMethod(null);
     } catch (err: unknown) {
       console.error('Error al confirmar la cita', err);
       if (axios.isAxiosError(err)) {
@@ -311,6 +316,36 @@ function StoreDetailsContent() {
               )}
             </div>
 
+            <div className="mb-8">
+              <label className="block text-sm text-neutral-400 mb-2">
+                Método de pago
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPaymentMethod('cash_on_site')}
+                  className={`py-2 rounded-lg transition-colors border ${
+                    selectedPaymentMethod === 'cash_on_site'
+                      ? 'bg-white text-black border-white'
+                      : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-neutral-500'
+                  }`}
+                >
+                  Efectivo al llegar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPaymentMethod('card_advance')}
+                  className={`py-2 rounded-lg transition-colors border ${
+                    selectedPaymentMethod === 'card_advance'
+                      ? 'bg-white text-black border-white'
+                      : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-neutral-500'
+                  }`}
+                >
+                  Tarjeta por adelantado
+                </button>
+              </div>
+            </div>
+
             {confirmError && (
               <p className="text-red-400 text-sm mb-4">{confirmError}</p>
             )}
@@ -331,6 +366,7 @@ function StoreDetailsContent() {
               disabled={
                 !selectedDate ||
                 !selectedTime ||
+                !selectedPaymentMethod ||
                 !daySchedule ||
                 daySchedule.is_closed ||
                 confirming

@@ -16,7 +16,7 @@ export interface SignInRequest {
 
 export interface TokenResponse {
   access_token: string;
-  // Añade refresh_token si tu API de Go lo devuelve
+  refresh_token?: string;
 }
 
 export interface ValidateTokenResponse {
@@ -24,6 +24,17 @@ export interface ValidateTokenResponse {
   user_id: string;
   email: string;
   role: string;
+}
+
+export interface RefreshTokenRequest {
+  refresh_token: string;
+}
+
+export interface RefreshTokenResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
 }
 
 export const authService = {
@@ -45,20 +56,50 @@ export const authService = {
     return response.data;
   },
 
-  setToken: (token: string) => {
+  refresh: async (data: RefreshTokenRequest): Promise<RefreshTokenResponse> => {
+    // Endpoint público, no requiere Authorization
+    const response = await apiClient.post<RefreshTokenResponse>(
+      '/auth/refresh',
+      data,
+    );
+    return response.data;
+  },
+
+  setToken: (token: string, refreshToken?: string) => {
     // Guarda el token en una cookie válida por 7 días
     Cookies.set('token', token, { expires: 7, path: '/' });
 
     if (typeof window !== 'undefined') {
       localStorage.setItem('token', token); // Opcional: mantenerlo aquí por compatibilidad
     }
+
+    if (refreshToken) {
+      Cookies.set('refreshToken', refreshToken, { expires: 7, path: '/' });
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('refreshToken', refreshToken);
+      }
+    }
+  },
+
+  getRefreshToken: (): string | undefined => {
+    const cookieToken = Cookies.get('refreshToken');
+    if (cookieToken) return cookieToken;
+
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('refreshToken') ?? undefined;
+    }
+
+    return undefined;
   },
 
   logout: () => {
     Cookies.remove('token', { path: '/' });
+    Cookies.remove('refreshToken', { path: '/' });
 
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
       window.location.href = '/sign-in';
     }
   },

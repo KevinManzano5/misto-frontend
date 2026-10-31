@@ -30,7 +30,7 @@ export default function SignUpPage() {
 
     try {
       const response = await authService.register(formData);
-      authService.setToken(response.access_token);
+      authService.setToken(response.access_token, response.refresh_token);
       router.push('/');
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
