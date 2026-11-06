@@ -59,11 +59,15 @@ export const storeService = {
     return response.data;
   },
 
-  // Obtiene los horarios disponibles ("HH:mm") para una fecha dada
-  getAvailability: async (storeId: string, date: string): Promise<string[]> => {
+  // Obtiene los horarios disponibles ("HH:mm") para una fecha y servicio dados
+  getAvailability: async (
+    storeId: string,
+    date: string,
+    serviceId: string,
+  ): Promise<string[]> => {
     const response = await apiClient.get<string[]>(
       `/stores/${storeId}/availability`,
-      { params: { date } },
+      { params: { date, service_id: serviceId } },
     );
     return response.data;
   },

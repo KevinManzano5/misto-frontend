@@ -11,6 +11,7 @@ import StoreSchedulesSection from './StoreSchedulesSection';
 import StoreAppointmentsSection from './StoreAppointmentsSection';
 import StoreInfoSection from './StoreInfoSection';
 import StoreCategoriesSection from './StoreCategoriesSection';
+import StoreServicesSection from './StoreServicesSection';
 
 type SettingsTab = 'config' | 'management';
 
@@ -211,6 +212,13 @@ function StoreSettingsContent() {
 
             <div className="mt-6">
               <StoreCategoriesSection store={store} onUpdated={setStore} />
+            </div>
+
+            <div className="mt-6">
+              <StoreServicesSection
+                storeId={store.id}
+                categories={store.categories}
+              />
             </div>
 
             <div className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-xl space-y-6 mt-6">
