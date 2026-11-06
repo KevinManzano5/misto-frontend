@@ -10,6 +10,7 @@ import { getUserIdFromToken } from '@/lib/jwt';
 import StoreSchedulesSection from './StoreSchedulesSection';
 import StoreAppointmentsSection from './StoreAppointmentsSection';
 import StoreInfoSection from './StoreInfoSection';
+import StoreCategoriesSection from './StoreCategoriesSection';
 
 type SettingsTab = 'config' | 'management';
 
@@ -207,6 +208,10 @@ function StoreSettingsContent() {
         {activeTab === 'config' ? (
           <>
             <StoreInfoSection store={store} onUpdated={setStore} />
+
+            <div className="mt-6">
+              <StoreCategoriesSection store={store} onUpdated={setStore} />
+            </div>
 
             <div className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-xl space-y-6 mt-6">
               <div className="flex items-center justify-between gap-4">
