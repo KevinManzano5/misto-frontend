@@ -17,6 +17,8 @@ export interface Store {
   phone_number: string;
   allow_same_day_appointments: boolean;
   schedules: StoreSchedule[];
+  average_rating: number;
+  rating_count: number;
   categories: StoreCategory[];
   created_at: string;
   updated_at: string;

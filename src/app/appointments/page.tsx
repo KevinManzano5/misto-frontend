@@ -10,6 +10,7 @@ import {
 } from '@/services/appointmentService';
 import UserMenu from '@/components/UserMenu';
 import Sidebar from '@/components/Sidebar';
+import RateAppointmentForm from './RateAppointmentForm';
 
 const STATUS_LABELS: Record<UserAppointment['status'], string> = {
   confirmed: 'Confirmada',
@@ -40,6 +41,9 @@ export default function AppointmentsHistoryPage() {
   // Id de la cita para la cual se está pidiendo la razón de cancelación
   const [cancelPromptId, setCancelPromptId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
+
+  // Id de la cita para la cual se está mostrando el formulario de reseña
+  const [ratingPromptId, setRatingPromptId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -231,6 +235,36 @@ export default function AppointmentsHistoryPage() {
                       </button>
                     )
                   )}
+
+                  {appointment.status === 'completed' &&
+                    (appointment.has_rating ? (
+                      <p className="text-sm text-neutral-500">
+                        Ya calificaste esta cita
+                      </p>
+                    ) : ratingPromptId === appointment.id ? (
+                      <RateAppointmentForm
+                        appointmentId={appointment.id}
+                        onClose={() => setRatingPromptId(null)}
+                        onSubmitted={() => {
+                          setAppointments((prev) =>
+                            prev.map((item) =>
+                              item.id === appointment.id
+                                ? { ...item, has_rating: true }
+                                : item,
+                            ),
+                          );
+                          setRatingPromptId(null);
+                        }}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setRatingPromptId(appointment.id)}
+                        className="text-sm text-neutral-300 hover:text-white transition-colors py-2 px-4 rounded-lg border border-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+                      >
+                        Calificar
+                      </button>
+                    ))}
                 </div>
               );
             })}

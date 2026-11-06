@@ -53,6 +53,7 @@ export interface UserAppointment {
   start_time: string;
   end_time: string;
   status: AppointmentStatus;
+  has_rating: boolean;
 }
 
 // String en vez de union: el backend puede agregar más estados de pago
