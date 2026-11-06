@@ -6,6 +6,7 @@ import { isAxiosError } from 'axios';
 import { storeService, Store } from '@/services/storeService';
 import UserMenu from '@/components/UserMenu';
 import Sidebar from '@/components/Sidebar';
+import StarRating from '@/components/StarRating';
 
 export default function HomePage() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -88,6 +89,12 @@ export default function HomePage() {
                 <h3 className="text-lg font-medium text-white mb-2">
                   {store.name}
                 </h3>
+                <div className="mb-3">
+                  <StarRating
+                    averageRating={store.average_rating}
+                    ratingCount={store.rating_count}
+                  />
+                </div>
                 <p className="text-neutral-400 text-sm mb-6 line-clamp-3 flex-grow leading-relaxed">
                   {store.description || 'Sin descripción disponible.'}
                 </p>

@@ -14,6 +14,8 @@ import {
 } from '@/services/appointmentService';
 import UserMenu from '@/components/UserMenu';
 import Sidebar from '@/components/Sidebar';
+import StarRating from '@/components/StarRating';
+import StoreReviewsSection from './StoreReviewsSection';
 
 // Evita que "YYYY-MM-DD" se interprete como UTC y cambie de día por el offset local.
 function getDayOfWeek(date: string): number {
@@ -315,6 +317,12 @@ function StoreDetailsContent() {
           <h1 className="text-4xl font-medium text-white tracking-tight mb-4">
             {store.name}
           </h1>
+          <div className="mb-4">
+            <StarRating
+              averageRating={store.average_rating}
+              ratingCount={store.rating_count}
+            />
+          </div>
           <p className="text-neutral-400 leading-relaxed text-lg mb-6">
             {store.description}
           </p>
@@ -554,6 +562,8 @@ function StoreDetailsContent() {
             </>
           )}
         </div>
+
+        <StoreReviewsSection storeId={store.id} />
         </main>
       </div>
     </div>
