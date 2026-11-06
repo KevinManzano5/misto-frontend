@@ -1,5 +1,6 @@
 import { apiClient } from '@/lib/apiClient';
 import { StoreSchedule } from './storeScheduleService';
+import { StoreCategory } from './storeCategoryService';
 
 export interface Store {
   id: string;
@@ -18,6 +19,7 @@ export interface Store {
   schedules: StoreSchedule[];
   average_rating: number;
   rating_count: number;
+  categories: StoreCategory[];
   created_at: string;
   updated_at: string;
 }
@@ -69,6 +71,18 @@ export const storeService = {
   // Actualiza la configuración de la tienda
   update: async (id: string, data: UpdateStoreRequest): Promise<Store> => {
     const response = await apiClient.patch<Store>(`/stores/${id}`, data);
+    return response.data;
+  },
+
+  // Reemplaza el conjunto de categorías asignadas a la tienda
+  updateCategories: async (
+    id: string,
+    categoryIds: string[],
+  ): Promise<StoreCategory[]> => {
+    const response = await apiClient.put<StoreCategory[]>(
+      `/stores/${id}/categories`,
+      { category_ids: categoryIds },
+    );
     return response.data;
   },
 };

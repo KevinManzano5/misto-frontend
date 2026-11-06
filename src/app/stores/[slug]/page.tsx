@@ -323,6 +323,20 @@ function StoreDetailsContent() {
               ratingCount={store.rating_count}
             />
           </div>
+
+          {store.categories.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {store.categories.map((category) => (
+                <span
+                  key={category.id}
+                  className="text-xs text-neutral-300 bg-neutral-800 border border-neutral-700 px-2.5 py-1 rounded-full"
+                >
+                  {category.name}
+                </span>
+              ))}
+            </div>
+          )}
+
           <p className="text-neutral-400 leading-relaxed text-lg mb-6">
             {store.description}
           </p>
