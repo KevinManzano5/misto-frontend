@@ -28,7 +28,7 @@ export default function NewStorePage() {
 
     try {
       const store = await storeService.create(formData);
-      router.push(`/stores/${store.id}/settings`);
+      router.push(`/stores/${store.slug}/settings`);
     } catch (err: unknown) {
       console.error('Error al crear la tienda', err);
       if (isAxiosError(err)) {

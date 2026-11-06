@@ -57,7 +57,7 @@ const STATUS_LABELS: Record<AppointmentStatus, string> = {
 };
 
 function StoreDetailsContent() {
-  const { id } = useParams() as { id: string };
+  const { slug } = useParams() as { slug: string };
   const router = useRouter();
 
   const [store, setStore] = useState<Store | null>(null);
@@ -95,7 +95,7 @@ function StoreDetailsContent() {
   useEffect(() => {
     const fetchStoreData = async () => {
       try {
-        const storeData = await storeService.getById(id);
+        const storeData = await storeService.getById(slug);
         setStore(storeData);
 
         const minDate = getMinSelectableDate(storeData);
@@ -115,18 +115,20 @@ function StoreDetailsContent() {
       }
     };
 
-    if (id) fetchStoreData();
-  }, [id]);
+    if (slug) fetchStoreData();
+  }, [slug]);
 
   // Verifica si el usuario ya tiene una cita vigente en esta tienda
   useEffect(() => {
     const fetchExistingAppointment = async () => {
-      if (!id) return;
+      if (!store) return;
 
       setCheckingExistingAppointment(true);
 
       try {
-        const result = await appointmentService.getMyStatusForStore(id);
+        const result = await appointmentService.getMyStatusForStore(
+          store.id,
+        );
         setExistingAppointment(
           result.has_appointment ? result.appointment : null,
         );
@@ -138,7 +140,7 @@ function StoreDetailsContent() {
     };
 
     fetchExistingAppointment();
-  }, [id]);
+  }, [store]);
 
   const daySchedule = store
     ? store.schedules.find(
@@ -149,7 +151,7 @@ function StoreDetailsContent() {
   // Carga los horarios disponibles para la fecha elegida
   useEffect(() => {
     const fetchAvailability = async () => {
-      if (!id || !selectedDate) {
+      if (!store || !selectedDate) {
         setAvailableSlots([]);
         return;
       }
@@ -158,7 +160,10 @@ function StoreDetailsContent() {
       setSlotsError('');
 
       try {
-        const slots = await storeService.getAvailability(id, selectedDate);
+        const slots = await storeService.getAvailability(
+          store.id,
+          selectedDate,
+        );
         setAvailableSlots(slots);
       } catch (err: unknown) {
         console.error('Error al cargar los horarios disponibles', err);
@@ -179,7 +184,7 @@ function StoreDetailsContent() {
     };
 
     fetchAvailability();
-  }, [id, selectedDate]);
+  }, [store, selectedDate]);
 
   const handleConfirmAppointment = async () => {
     if (!selectedTime || !store || !selectedPaymentMethod) return;
@@ -190,7 +195,7 @@ function StoreDetailsContent() {
 
     try {
       const appointment = await appointmentService.create({
-        store_id: id,
+        store_id: store.id,
         start_time: buildStartTime(selectedDate, selectedTime, store.timezone),
         payment_method: selectedPaymentMethod,
       });

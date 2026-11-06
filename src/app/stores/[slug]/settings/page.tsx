@@ -14,7 +14,7 @@ import StoreInfoSection from './StoreInfoSection';
 type SettingsTab = 'config' | 'management';
 
 function StoreSettingsContent() {
-  const { id } = useParams() as { id: string };
+  const { slug } = useParams() as { slug: string };
   const router = useRouter();
 
   const [store, setStore] = useState<Store | null>(null);
@@ -32,7 +32,7 @@ function StoreSettingsContent() {
   useEffect(() => {
     const fetchStore = async () => {
       try {
-        const data = await storeService.getById(id);
+        const data = await storeService.getById(slug);
 
         const token = Cookies.get('token');
         const userId = token ? getUserIdFromToken(token) : null;
@@ -58,8 +58,8 @@ function StoreSettingsContent() {
       }
     };
 
-    if (id) fetchStore();
-  }, [id]);
+    if (slug) fetchStore();
+  }, [slug]);
 
   const handleToggleAutoConfirm = async () => {
     if (!store) return;
