@@ -9,6 +9,7 @@ export interface ServiceFormValues {
   description: string;
   duration_minutes: string;
   price: string;
+  min_lead_time_minutes: string;
 }
 
 export interface ServiceFormPayload {
@@ -17,6 +18,7 @@ export interface ServiceFormPayload {
   description: string;
   duration_minutes: number;
   price: number;
+  min_lead_time_minutes: number;
 }
 
 interface ServiceFormProps {
@@ -51,6 +53,7 @@ export default function ServiceForm({
 
     const durationMinutes = Number(form.duration_minutes);
     const price = Number(form.price);
+    const minLeadTimeMinutes = Number(form.min_lead_time_minutes);
 
     if (!form.category_id) {
       setValidationError('Selecciona una categoría.');
@@ -68,6 +71,12 @@ export default function ServiceForm({
       setValidationError('El precio debe ser un número válido.');
       return;
     }
+    if (!Number.isFinite(minLeadTimeMinutes) || minLeadTimeMinutes < 0) {
+      setValidationError(
+        'El tiempo mínimo de anticipación debe ser un número válido.',
+      );
+      return;
+    }
 
     onSubmit({
       category_id: form.category_id,
@@ -75,6 +84,7 @@ export default function ServiceForm({
       description: form.description.trim(),
       duration_minutes: durationMinutes,
       price,
+      min_lead_time_minutes: minLeadTimeMinutes,
     });
   };
 
@@ -191,6 +201,30 @@ export default function ServiceForm({
             className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-neutral-500"
           />
         </div>
+      </div>
+
+      <div>
+        <label
+          htmlFor={`${idPrefix}-min-lead-time`}
+          className="block text-xs text-neutral-500 mb-1"
+        >
+          Anticipación mínima (min)
+        </label>
+        <input
+          id={`${idPrefix}-min-lead-time`}
+          type="number"
+          name="min_lead_time_minutes"
+          min="0"
+          placeholder="0"
+          value={form.min_lead_time_minutes}
+          onChange={(e) =>
+            setForm((prev) => ({
+              ...prev,
+              min_lead_time_minutes: e.target.value,
+            }))
+          }
+          className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-neutral-500"
+        />
       </div>
 
       {displayError && <p className="text-red-400 text-sm">{displayError}</p>}

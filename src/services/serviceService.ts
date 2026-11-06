@@ -9,6 +9,7 @@ export interface Service {
   duration_minutes: number;
   price: number;
   is_active: boolean;
+  min_lead_time_minutes: number;
   created_at: string;
   updated_at: string;
 }
@@ -19,6 +20,7 @@ export interface CreateServiceRequest {
   description: string;
   duration_minutes: number;
   price: number;
+  min_lead_time_minutes: number;
 }
 
 export interface UpdateServiceRequest {
@@ -27,6 +29,7 @@ export interface UpdateServiceRequest {
   description?: string;
   duration_minutes?: number;
   price?: number;
+  min_lead_time_minutes?: number;
 }
 
 export const serviceService = {
