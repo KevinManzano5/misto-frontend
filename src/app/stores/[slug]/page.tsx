@@ -12,10 +12,12 @@ import {
   MyStoreAppointment,
   PaymentMethod,
 } from '@/services/appointmentService';
+import { serviceService, Service } from '@/services/serviceService';
 import UserMenu from '@/components/UserMenu';
 import Sidebar from '@/components/Sidebar';
 import StarRating from '@/components/StarRating';
 import StoreReviewsSection from './StoreReviewsSection';
+import StoreServicesList from './StoreServicesList';
 
 // Evita que "YYYY-MM-DD" se interprete como UTC y cambie de día por el offset local.
 function getDayOfWeek(date: string): number {
@@ -65,6 +67,14 @@ function StoreDetailsContent() {
   const [store, setStore] = useState<Store | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Servicios ofrecidos por la tienda
+  const [services, setServices] = useState<Service[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
+  const [servicesError, setServicesError] = useState('');
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
+    null,
+  );
 
   // Scheduling statuses
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString);
@@ -120,6 +130,43 @@ function StoreDetailsContent() {
     if (slug) fetchStoreData();
   }, [slug]);
 
+  // Carga los servicios activos que ofrece la tienda
+  useEffect(() => {
+    const fetchServices = async () => {
+      if (!store) return;
+
+      setServicesLoading(true);
+      setServicesError('');
+
+      try {
+        const data = await serviceService.getByStoreId(store.id);
+        const activeServices = data.filter((service) => service.is_active);
+        setServices(activeServices);
+        setSelectedServiceId((prev) =>
+          prev && activeServices.some((service) => service.id === prev)
+            ? prev
+            : activeServices[0]?.id ?? null,
+        );
+      } catch (err: unknown) {
+        console.error('Error al cargar los servicios de la tienda', err);
+        if (axios.isAxiosError(err)) {
+          setServicesError(
+            err.response?.data?.detail ||
+              'No se pudieron cargar los servicios de la tienda.',
+          );
+        } else {
+          setServicesError(
+            'Ocurrió un error inesperado al cargar los servicios.',
+          );
+        }
+      } finally {
+        setServicesLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, [store]);
+
   // Verifica si el usuario ya tiene una cita vigente en esta tienda
   useEffect(() => {
     const fetchExistingAppointment = async () => {
@@ -150,10 +197,10 @@ function StoreDetailsContent() {
       ) ?? null
     : null;
 
-  // Carga los horarios disponibles para la fecha elegida
+  // Carga los horarios disponibles para la fecha y el servicio elegidos
   useEffect(() => {
     const fetchAvailability = async () => {
-      if (!store || !selectedDate) {
+      if (!store || !selectedDate || !selectedServiceId) {
         setAvailableSlots([]);
         return;
       }
@@ -165,6 +212,7 @@ function StoreDetailsContent() {
         const slots = await storeService.getAvailability(
           store.id,
           selectedDate,
+          selectedServiceId,
         );
         setAvailableSlots(slots);
       } catch (err: unknown) {
@@ -186,10 +234,16 @@ function StoreDetailsContent() {
     };
 
     fetchAvailability();
-  }, [store, selectedDate]);
+  }, [store, selectedDate, selectedServiceId]);
 
   const handleConfirmAppointment = async () => {
-    if (!selectedTime || !store || !selectedPaymentMethod) return;
+    if (
+      !selectedTime ||
+      !store ||
+      !selectedPaymentMethod ||
+      !selectedServiceId
+    )
+      return;
 
     setConfirming(true);
     setConfirmError('');
@@ -200,11 +254,28 @@ function StoreDetailsContent() {
         store_id: store.id,
         start_time: buildStartTime(selectedDate, selectedTime, store.timezone),
         payment_method: selectedPaymentMethod,
+        service_id: selectedServiceId,
       });
       setConfirmedStatus(appointment.status);
-      setAvailableSlots((prev) => prev.filter((time) => time !== selectedTime));
       setSelectedTime('');
       setSelectedPaymentMethod(null);
+
+      setCheckingExistingAppointment(true);
+      try {
+        const result = await appointmentService.getMyStatusForStore(
+          store.id,
+        );
+        setExistingAppointment(
+          result.has_appointment ? result.appointment : null,
+        );
+      } catch (statusErr: unknown) {
+        console.error(
+          'Error al verificar la cita recién agendada',
+          statusErr,
+        );
+      } finally {
+        setCheckingExistingAppointment(false);
+      }
     } catch (err: unknown) {
       console.error('Error al confirmar la cita', err);
       if (axios.isAxiosError(err)) {
@@ -362,6 +433,17 @@ function StoreDetailsContent() {
           </div>
         </div>
 
+        <StoreServicesList
+          services={services}
+          loading={servicesLoading}
+          error={servicesError}
+          selectedServiceId={selectedServiceId}
+          onSelect={(serviceId) => {
+            setSelectedServiceId(serviceId);
+            setSelectedTime('');
+          }}
+        />
+
         <div className="max-w-md">
           {checkingExistingAppointment ? (
             <p className="text-neutral-500 text-sm animate-pulse">
@@ -479,7 +561,11 @@ function StoreDetailsContent() {
                 Hora
               </label>
 
-              {slotsLoading ? (
+              {!selectedServiceId ? (
+                <p className="text-neutral-500 text-sm">
+                  Selecciona un servicio para ver los horarios disponibles.
+                </p>
+              ) : slotsLoading ? (
                 <p className="text-neutral-500 text-sm">
                   Consultando horarios...
                 </p>
@@ -564,6 +650,7 @@ function StoreDetailsContent() {
                 !selectedDate ||
                 !selectedTime ||
                 !selectedPaymentMethod ||
+                !selectedServiceId ||
                 !daySchedule ||
                 daySchedule.is_closed ||
                 confirming

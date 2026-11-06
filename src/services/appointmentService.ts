@@ -7,6 +7,7 @@ export interface CreateAppointmentRequest {
   store_id: string;
   start_time: string; // ISO 8601 string, manejado por time.Time en Go
   payment_method: PaymentMethod;
+  service_id: string;
 }
 
 export type AppointmentStatus =
