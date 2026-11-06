@@ -27,7 +27,7 @@ export default function SignInPage() {
 
     try {
       const response = await authService.login(formData);
-      authService.setToken(response.access_token);
+      authService.setToken(response.access_token, response.refresh_token);
       router.push('/');
     } catch (err: unknown) {
       if (axios.isAxiosError<{ detail: string }>(err)) {

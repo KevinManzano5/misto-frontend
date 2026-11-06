@@ -1,9 +1,12 @@
 import { apiClient } from '@/lib/apiClient';
 
+export type PaymentMethod = 'cash_on_site' | 'card_advance';
+
 // 1. Definimos las interfaces TypeScript basándonos en los structs de tu Golang
 export interface CreateAppointmentRequest {
   store_id: string;
   start_time: string; // ISO 8601 string, manejado por time.Time en Go
+  payment_method: PaymentMethod;
 }
 
 export type AppointmentStatus =
@@ -52,6 +55,25 @@ export interface UserAppointment {
   status: AppointmentStatus;
 }
 
+// String en vez de union: el backend puede agregar más estados de pago
+// además de 'pending', que es el único documentado hasta ahora.
+export type PaymentStatus = string;
+
+// Cita vigente del usuario en una tienda específica (versión resumida)
+export interface MyStoreAppointment {
+  id: string;
+  status: AppointmentStatus;
+  start_time: string;
+  end_time: string;
+  payment_method: PaymentMethod;
+  payment_status: PaymentStatus;
+}
+
+export interface MyStoreAppointmentStatus {
+  has_appointment: boolean;
+  appointment: MyStoreAppointment | null;
+}
+
 // 2. Creamos los métodos para comunicarnos con el backend
 export const appointmentService = {
   create: async (
@@ -84,6 +106,16 @@ export const appointmentService = {
   // Obtiene el historial de citas del usuario autenticado
   getMine: async (): Promise<UserAppointment[]> => {
     const response = await apiClient.get<UserAppointment[]>('/appointments');
+    return response.data;
+  },
+
+  // Indica si el usuario autenticado ya tiene una cita vigente en esta tienda
+  getMyStatusForStore: async (
+    storeId: string,
+  ): Promise<MyStoreAppointmentStatus> => {
+    const response = await apiClient.get<MyStoreAppointmentStatus>(
+      `/stores/${storeId}/appointments/me`,
+    );
     return response.data;
   },
 

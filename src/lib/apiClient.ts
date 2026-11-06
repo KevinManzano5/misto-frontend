@@ -1,5 +1,10 @@
-import axios from 'axios';
+import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import Cookies from 'js-cookie';
+import { authService } from '@/services/authService';
+
+interface RetryableRequestConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+}
 
 // Creamos la instancia principal
 export const apiClient = axios.create({
@@ -40,14 +45,66 @@ apiClient.interceptors.request.use(
 );
 
 // Interceptor para manejar errores globalmente (Ej. Token expirado)
+let isRefreshing = false;
+let refreshQueue: Array<(token: string | null) => void> = [];
+
+const processQueue = (token: string | null) => {
+  refreshQueue.forEach((callback) => callback(token));
+  refreshQueue = [];
+};
+
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Redirigir al login si el token expiró o no es válido
-      console.error('No autorizado. Redirigiendo al login...');
-      // window.location.href = '/login';
+  async (error: AxiosError) => {
+    const originalRequest = error.config as RetryableRequestConfig | undefined;
+
+    const isAuthRefreshCall = originalRequest?.url?.includes('/auth/refresh');
+
+    if (
+      error.response?.status !== 401 ||
+      !originalRequest ||
+      originalRequest._retry ||
+      isAuthRefreshCall
+    ) {
+      return Promise.reject(error);
     }
-    return Promise.reject(error);
+
+    const refreshToken = authService.getRefreshToken();
+
+    if (!refreshToken) {
+      authService.logout();
+      return Promise.reject(error);
+    }
+
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        refreshQueue.push((token) => {
+          if (!token) {
+            reject(error);
+            return;
+          }
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          resolve(apiClient(originalRequest));
+        });
+      });
+    }
+
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    try {
+      const refreshed = await authService.refresh({ refresh_token: refreshToken });
+      authService.setToken(refreshed.access_token, refreshed.refresh_token);
+      processQueue(refreshed.access_token);
+
+      originalRequest.headers.Authorization = `Bearer ${refreshed.access_token}`;
+      return apiClient(originalRequest);
+    } catch (refreshError) {
+      processQueue(null);
+      authService.logout();
+      return Promise.reject(refreshError);
+    } finally {
+      isRefreshing = false;
+    }
   },
 );

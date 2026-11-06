@@ -3,6 +3,7 @@ import { StoreSchedule } from './storeScheduleService';
 
 export interface Store {
   id: string;
+  slug: string;
   user_id: string;
   name: string;
   description: string;
@@ -48,9 +49,9 @@ export const storeService = {
     return response.data;
   },
 
-  // Get details for a specific store
-  getById: async (id: string): Promise<Store> => {
-    const response = await apiClient.get<Store>(`/stores/${id}`);
+  // Obtiene los detalles de una tienda por id o por slug
+  getById: async (idOrSlug: string): Promise<Store> => {
+    const response = await apiClient.get<Store>(`/stores/${idOrSlug}`);
     return response.data;
   },
 

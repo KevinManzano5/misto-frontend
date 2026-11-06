@@ -94,7 +94,7 @@ export default function HomePage() {
 
                 {/* Enlace a la ruta dinámica de la tienda */}
                 <Link
-                  href={`/stores/${store.id}`}
+                  href={`/stores/${store.slug}`}
                   className="mt-auto w-full text-center bg-white text-black font-medium py-2.5 rounded-lg hover:bg-neutral-200 transition-colors"
                 >
                   Ver servicios
