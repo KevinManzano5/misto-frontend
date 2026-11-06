@@ -22,6 +22,15 @@ function formatDuration(minutes: number): string {
   return `${minutes} min`;
 }
 
+function formatLeadTime(minutes: number): string {
+  if (!minutes) return 'Sin mínimo de anticipación';
+  if (minutes % 60 === 0) {
+    const hours = minutes / 60;
+    return `Mínimo ${hours} ${hours === 1 ? 'hora' : 'horas'} de anticipación`;
+  }
+  return `Mínimo ${minutes} min de anticipación`;
+}
+
 export default function StoreServicesSection({
   storeId,
   categories,
@@ -206,6 +215,7 @@ export default function StoreServicesSection({
             description: '',
             duration_minutes: '',
             price: '',
+            min_lead_time_minutes: '',
           }}
           submitLabel="Crear servicio"
           savingLabel="Creando..."
@@ -240,6 +250,9 @@ export default function StoreServicesSection({
                     description: service.description,
                     duration_minutes: String(service.duration_minutes),
                     price: String(service.price),
+                    min_lead_time_minutes: String(
+                      service.min_lead_time_minutes,
+                    ),
                   }}
                   submitLabel="Guardar"
                   savingLabel="Guardando..."
@@ -273,6 +286,8 @@ export default function StoreServicesSection({
                     )}
                     <p className="text-xs text-neutral-500 mt-2">
                       {formatDuration(service.duration_minutes)}
+                      {' · '}
+                      {formatLeadTime(service.min_lead_time_minutes)}
                     </p>
                   </div>
                   <div className="flex items-center gap-4">
