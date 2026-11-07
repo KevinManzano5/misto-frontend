@@ -607,28 +607,32 @@ function StoreDetailsContent() {
                 Método de pago
               </label>
               <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setSelectedPaymentMethod('cash_on_site')}
-                  className={`py-2 rounded-lg transition-colors border ${
-                    selectedPaymentMethod === 'cash_on_site'
-                      ? 'bg-white text-black border-white'
-                      : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-neutral-500'
-                  }`}
-                >
-                  Efectivo al llegar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedPaymentMethod('card_advance')}
-                  className={`py-2 rounded-lg transition-colors border ${
-                    selectedPaymentMethod === 'card_advance'
-                      ? 'bg-white text-black border-white'
-                      : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-neutral-500'
-                  }`}
-                >
-                  Tarjeta por adelantado
-                </button>
+                {store.payment_methods?.cash_on_site && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPaymentMethod('cash_on_site')}
+                    className={`py-2 rounded-lg transition-colors border ${
+                      selectedPaymentMethod === 'cash_on_site'
+                        ? 'bg-white text-black border-white'
+                        : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-neutral-500'
+                    }`}
+                  >
+                    Efectivo al llegar
+                  </button>
+                )}
+                {store.payment_methods?.card_advance && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPaymentMethod('card_advance')}
+                    className={`py-2 rounded-lg transition-colors border ${
+                      selectedPaymentMethod === 'card_advance'
+                        ? 'bg-white text-black border-white'
+                        : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-neutral-500'
+                    }`}
+                  >
+                    Tarjeta por adelantado
+                  </button>
+                )}
               </div>
             </div>
 
