@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import AdminUsersList from './AdminUsersList';
 import AdminStoresList from './AdminStoresList';
+import AdminPaymentMethodsSection from './AdminPaymentMethodsSection';
 
-type Tab = 'users' | 'stores';
+type Tab = 'users' | 'stores' | 'payment-methods';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'users', label: 'Usuarios' },
   { id: 'stores', label: 'Tiendas' },
+  { id: 'payment-methods', label: 'Métodos de pago' },
 ];
 
 export default function AdminSettingsTabs() {
@@ -43,19 +45,30 @@ export default function AdminSettingsTabs() {
         })}
       </div>
 
-      {activeTab === 'users' ? (
+      {activeTab === 'users' && (
         <section role="tabpanel">
           <p className="mb-6 text-neutral-400">
             Usuarios registrados en la plataforma.
           </p>
           <AdminUsersList />
         </section>
-      ) : (
+      )}
+
+      {activeTab === 'stores' && (
         <section role="tabpanel">
           <p className="mb-6 text-neutral-400">
             Tiendas registradas en la plataforma.
           </p>
           <AdminStoresList />
+        </section>
+      )}
+
+      {activeTab === 'payment-methods' && (
+        <section role="tabpanel">
+          <p className="mb-6 text-neutral-400">
+            Métodos de pago habilitados globalmente en la plataforma.
+          </p>
+          <AdminPaymentMethodsSection />
         </section>
       )}
     </div>
