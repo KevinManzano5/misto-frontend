@@ -24,6 +24,7 @@ export interface Store {
   average_rating: number;
   rating_count: number;
   categories: StoreCategory[];
+  app_usage_fee_percentage: number;
   created_at: string;
   updated_at: string;
 }
@@ -31,6 +32,10 @@ export interface Store {
 export interface CreateStoreRequest {
   name: string;
   description: string;
+}
+
+export interface UpdateStoreFeeRequest {
+  app_usage_fee_percentage: number;
 }
 
 export interface UpdateStoreRequest {
@@ -88,6 +93,15 @@ export const storeService = {
   // Actualiza la configuración de la tienda
   update: async (id: string, data: UpdateStoreRequest): Promise<Store> => {
     const response = await apiClient.patch<Store>(`/stores/${id}`, data);
+    return response.data;
+  },
+
+  // Actualiza el porcentaje de comisión que cobra la app a la tienda
+  updateFee: async (
+    id: string,
+    data: UpdateStoreFeeRequest,
+  ): Promise<Store> => {
+    const response = await apiClient.patch<Store>(`/stores/${id}/fee`, data);
     return response.data;
   },
 

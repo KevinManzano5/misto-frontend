@@ -304,9 +304,14 @@ export default function StoreServicesSection({
                     </p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <p className="text-white font-medium whitespace-nowrap">
-                      {formatCurrencyCOP(service.price)}
-                    </p>
+                    <div className="text-right whitespace-nowrap">
+                      <p className="text-white font-medium">
+                        {formatCurrencyCOP(service.total_price)}
+                      </p>
+                      <p className="text-xs text-neutral-500">
+                        Precio base {formatCurrencyCOP(service.price)}
+                      </p>
+                    </div>
                     <button
                       type="button"
                       onClick={() => handleToggleSchedules(service.id)}

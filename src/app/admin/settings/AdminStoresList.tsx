@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { isAxiosError } from 'axios';
 import { storeService, Store } from '@/services/storeService';
+import AdminStoreFeeCell from './AdminStoreFeeCell';
 
 export default function AdminStoresList() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -85,6 +86,7 @@ export default function AdminStoresList() {
               <th scope="col" className="px-4 py-3 font-medium">Tienda</th>
               <th scope="col" className="px-4 py-3 font-medium">Categorías</th>
               <th scope="col" className="px-4 py-3 font-medium">Calificación</th>
+              <th scope="col" className="px-4 py-3 font-medium">Comisión</th>
               <th scope="col" className="px-4 py-3 font-medium">Estado</th>
               <th scope="col" className="px-4 py-3 font-medium">Creada</th>
             </tr>
@@ -116,6 +118,21 @@ export default function AdminStoresList() {
                   {store.rating_count > 0
                     ? `${store.average_rating.toFixed(1)} (${store.rating_count})`
                     : 'Sin calificaciones'}
+                </td>
+                <td className="px-4 py-3 text-neutral-300">
+                  <AdminStoreFeeCell
+                    storeId={store.id}
+                    feePercentage={store.app_usage_fee_percentage}
+                    onUpdated={(storeId, feePercentage) =>
+                      setStores((prev) =>
+                        prev.map((s) =>
+                          s.id === storeId
+                            ? { ...s, app_usage_fee_percentage: feePercentage }
+                            : s,
+                        ),
+                      )
+                    }
+                  />
                 </td>
                 <td className="px-4 py-3">
                   <span
