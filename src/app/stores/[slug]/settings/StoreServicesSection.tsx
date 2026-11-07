@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { isAxiosError } from 'axios';
 import { serviceService, Service } from '@/services/serviceService';
+import { ServiceSchedule } from '@/services/serviceScheduleService';
 import { StoreCategory } from '@/services/storeCategoryService';
 import ServiceForm, { ServiceFormPayload } from './ServiceForm';
+import ServiceSchedulesSection from './ServiceSchedulesSection';
 
 interface StoreServicesSectionProps {
   storeId: string;
@@ -47,6 +49,8 @@ export default function StoreServicesSection({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+
+  const [schedulesOpenId, setSchedulesOpenId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -145,6 +149,21 @@ export default function StoreServicesSection({
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleToggleSchedules = (serviceId: string) => {
+    setSchedulesOpenId((prev) => (prev === serviceId ? null : serviceId));
+  };
+
+  const handleSchedulesSaved = (
+    serviceId: string,
+    schedules: ServiceSchedule[],
+  ) => {
+    setServices((prev) =>
+      prev.map((service) =>
+        service.id === serviceId ? { ...service, schedules } : service,
+      ),
+    );
   };
 
   const handleOpenDelete = (serviceId: string) => {
@@ -296,6 +315,14 @@ export default function StoreServicesSection({
                     </p>
                     <button
                       type="button"
+                      onClick={() => handleToggleSchedules(service.id)}
+                      disabled={isBusy}
+                      className="text-sm text-neutral-400 hover:text-white transition-colors focus:outline-none focus:ring-1 focus:ring-neutral-500 rounded px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Horarios
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => handleOpenEdit(service.id)}
                       disabled={isBusy}
                       className="text-sm text-neutral-400 hover:text-white transition-colors focus:outline-none focus:ring-1 focus:ring-neutral-500 rounded px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -312,6 +339,16 @@ export default function StoreServicesSection({
                     </button>
                   </div>
                 </div>
+
+                {schedulesOpenId === service.id && (
+                  <ServiceSchedulesSection
+                    serviceId={service.id}
+                    schedules={service.schedules}
+                    onSaved={(schedules) =>
+                      handleSchedulesSaved(service.id, schedules)
+                    }
+                  />
+                )}
 
                 {deletingId === service.id && (
                   <div className="border border-red-900/50 bg-red-950/20 rounded-lg p-3 space-y-3">

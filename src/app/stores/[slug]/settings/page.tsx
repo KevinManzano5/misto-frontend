@@ -7,7 +7,6 @@ import Cookies from 'js-cookie';
 import { isAxiosError } from 'axios';
 import { storeService, Store } from '@/services/storeService';
 import { getUserIdFromToken } from '@/lib/jwt';
-import StoreSchedulesSection from './StoreSchedulesSection';
 import StoreAppointmentsSection from './StoreAppointmentsSection';
 import StoreInfoSection from './StoreInfoSection';
 import StoreCategoriesSection from './StoreCategoriesSection';
@@ -289,14 +288,6 @@ function StoreSettingsContent() {
                 <p className="text-red-400 text-sm">{allowSameDayError}</p>
               )}
             </div>
-
-            <h2 className="text-xl font-medium text-white tracking-tight mt-10 mb-6">
-              Horarios por día
-            </h2>
-            <StoreSchedulesSection
-              storeId={store.id}
-              schedules={store.schedules}
-            />
           </>
         ) : (
           <>

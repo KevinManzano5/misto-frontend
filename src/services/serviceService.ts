@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/apiClient';
+import { ServiceSchedule } from './serviceScheduleService';
 
 export interface Service {
   id: string;
@@ -10,6 +11,7 @@ export interface Service {
   price: number;
   is_active: boolean;
   min_lead_time_minutes: number;
+  schedules: ServiceSchedule[];
   created_at: string;
   updated_at: string;
 }
