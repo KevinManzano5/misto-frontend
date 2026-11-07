@@ -191,8 +191,11 @@ function StoreDetailsContent() {
     fetchExistingAppointment();
   }, [store]);
 
-  const daySchedule = store
-    ? store.schedules.find(
+  const selectedService =
+    services.find((service) => service.id === selectedServiceId) ?? null;
+
+  const daySchedule = selectedService
+    ? selectedService.schedules.find(
         (schedule) => schedule.day_of_week === getDayOfWeek(selectedDate),
       ) ?? null
     : null;

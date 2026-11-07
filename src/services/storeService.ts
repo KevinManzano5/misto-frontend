@@ -1,5 +1,4 @@
 import { apiClient } from '@/lib/apiClient';
-import { StoreSchedule } from './storeScheduleService';
 import { StoreCategory } from './storeCategoryService';
 
 export interface Store {
@@ -16,7 +15,6 @@ export interface Store {
   address: string;
   phone_number: string;
   allow_same_day_appointments: boolean;
-  schedules: StoreSchedule[];
   average_rating: number;
   rating_count: number;
   categories: StoreCategory[];
