@@ -5,19 +5,13 @@ import { isAxiosError } from 'axios';
 import { serviceService, Service } from '@/services/serviceService';
 import { ServiceSchedule } from '@/services/serviceScheduleService';
 import { StoreCategory } from '@/services/storeCategoryService';
+import { formatCurrencyCOP } from '@/lib/formatCurrency';
 import ServiceForm, { ServiceFormPayload } from './ServiceForm';
 import ServiceSchedulesSection from './ServiceSchedulesSection';
 
 interface StoreServicesSectionProps {
   storeId: string;
   categories: StoreCategory[];
-}
-
-function formatPrice(price: number): string {
-  return price.toLocaleString('es-MX', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
 }
 
 function formatDuration(minutes: number): string {
@@ -311,7 +305,7 @@ export default function StoreServicesSection({
                   </div>
                   <div className="flex items-center gap-4">
                     <p className="text-white font-medium whitespace-nowrap">
-                      ${formatPrice(service.price)}
+                      {formatCurrencyCOP(service.price)}
                     </p>
                     <button
                       type="button"
