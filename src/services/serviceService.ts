@@ -9,6 +9,7 @@ export interface Service {
   description: string;
   duration_minutes: number;
   price: number;
+  total_price: number;
   is_active: boolean;
   min_lead_time_minutes: number;
   schedules: ServiceSchedule[];

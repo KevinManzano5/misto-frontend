@@ -73,7 +73,7 @@ export default function StoreServicesList({
                   </p>
                 </div>
                 <p className="text-white font-medium whitespace-nowrap">
-                  {formatCurrencyCOP(service.price)}
+                  {formatCurrencyCOP(service.total_price)}
                 </p>
               </button>
             </li>
