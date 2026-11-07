@@ -1,6 +1,7 @@
 'use client';
 
 import { Service } from '@/services/serviceService';
+import { formatCurrencyCOP } from '@/lib/formatCurrency';
 
 interface StoreServicesListProps {
   services: Service[];
@@ -8,13 +9,6 @@ interface StoreServicesListProps {
   error: string;
   selectedServiceId: string | null;
   onSelect: (serviceId: string) => void;
-}
-
-function formatPrice(price: number): string {
-  return price.toLocaleString('es-MX', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
 }
 
 function formatDuration(minutes: number): string {
@@ -79,7 +73,7 @@ export default function StoreServicesList({
                   </p>
                 </div>
                 <p className="text-white font-medium whitespace-nowrap">
-                  ${formatPrice(service.price)}
+                  {formatCurrencyCOP(service.price)}
                 </p>
               </button>
             </li>

@@ -52,7 +52,7 @@ export default function ServiceForm({
     setValidationError('');
 
     const durationMinutes = Number(form.duration_minutes);
-    const price = Number(form.price);
+    const price = Math.round(Number(form.price));
     const minLeadTimeMinutes = Number(form.min_lead_time_minutes);
 
     if (!form.category_id) {
@@ -193,7 +193,7 @@ export default function ServiceForm({
             type="number"
             name="price"
             min="0"
-            step="0.01"
+            step="1"
             value={form.price}
             onChange={(e) =>
               setForm((prev) => ({ ...prev, price: e.target.value }))
