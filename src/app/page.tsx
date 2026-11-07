@@ -17,7 +17,7 @@ export default function HomePage() {
     const fetchStores = async () => {
       try {
         const data = await storeService.getAll();
-        setStores(data);
+        setStores(data.stores);
       } catch (err: unknown) {
         console.error(err);
 

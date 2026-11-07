@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { PUBLIC_ROUTES } from '@/lib/publicRoutes';
 
 // Esta función se ejecuta antes de renderizar cualquier página
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
     // Obtenemos el token de las cookies de la petición
     const token = request.cookies.get('token')?.value;
     const { pathname } = request.nextUrl;
@@ -23,8 +23,34 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(dashboardUrl);
   }
 
+  // 4. Las rutas de administración requieren rol admin; lo validamos contra el backend
+  if (token && pathname.startsWith('/admin')) {
+    const isAdmin = await hasAdminRole(token);
+    if (!isAdmin) {
+      const homeUrl = new URL('/', request.url);
+      return NextResponse.redirect(homeUrl);
+    }
+  }
+
   // Si todo está bien, dejamos que la petición continúe
   return NextResponse.next();
+}
+
+// Valida el rol contra el backend; en middleware no podemos usar apiClient (depende de js-cookie/localStorage del navegador)
+async function hasAdminRole(token: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/validate`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) return false;
+
+    const data: { role?: string } = await response.json();
+    return data.role === 'admin';
+  } catch (err) {
+    console.error('Error al validar el rol de administrador', err);
+    return false;
+  }
 }
 
 // Configurar en qué rutas debe ejecutarse el middleware

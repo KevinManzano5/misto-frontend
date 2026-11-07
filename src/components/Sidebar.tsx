@@ -1,19 +1,39 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { authService } from '@/services/authService';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Inicio' },
   { href: '/appointments', label: 'Mis citas' },
 ];
 
+const ADMIN_NAV_ITEM = { href: '/admin/settings', label: 'Configuración de aplicación' };
+
 export default function Sidebar() {
   const pathname = usePathname();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkIsAdmin = async () => {
+      try {
+        const result = await authService.validate();
+        setIsAdmin(result.role === 'admin');
+      } catch (err: unknown) {
+        console.error('Error al validar el rol del usuario', err);
+      }
+    };
+
+    checkIsAdmin();
+  }, []);
+
+  const navItems = isAdmin ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS;
 
   return (
     <aside className="hidden sm:flex w-56 shrink-0 flex-col border-r border-neutral-800 bg-neutral-950 px-4 py-6 gap-1">
-      {NAV_ITEMS.map((item) => {
+      {navItems.map((item) => {
         const isActive = pathname === item.href;
 
         return (
