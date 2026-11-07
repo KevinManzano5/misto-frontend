@@ -38,10 +38,19 @@ export interface UpdateStoreRequest {
   allow_same_day_appointments?: boolean;
 }
 
+export interface ListStoresResponse {
+  stores: Store[];
+  total_count: number;
+  page: number;
+  page_size: number;
+}
+
 export const storeService = {
-  // Get all stores for the home page
-  getAll: async (): Promise<Store[]> => {
-    const response = await apiClient.get<Store[]>('/stores');
+  // Obtiene las tiendas (paginadas)
+  getAll: async (page: number = 1): Promise<ListStoresResponse> => {
+    const response = await apiClient.get<ListStoresResponse>('/stores', {
+      params: { page },
+    });
     return response.data;
   },
 
