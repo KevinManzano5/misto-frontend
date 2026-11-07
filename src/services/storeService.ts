@@ -1,6 +1,11 @@
 import { apiClient } from '@/lib/apiClient';
 import { StoreCategory } from './storeCategoryService';
 
+export interface StorePaymentMethods {
+  cash_on_site: boolean;
+  card_advance: boolean;
+}
+
 export interface Store {
   id: string;
   slug: string;
@@ -15,6 +20,7 @@ export interface Store {
   address: string;
   phone_number: string;
   allow_same_day_appointments: boolean;
+  payment_methods: StorePaymentMethods;
   average_rating: number;
   rating_count: number;
   categories: StoreCategory[];
