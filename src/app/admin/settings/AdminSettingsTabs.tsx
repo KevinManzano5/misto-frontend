@@ -4,13 +4,15 @@ import { useState } from 'react';
 import AdminUsersList from './AdminUsersList';
 import AdminStoresList from './AdminStoresList';
 import AdminPaymentMethodsSection from './AdminPaymentMethodsSection';
+import AdminStoreCategoriesSection from './AdminStoreCategoriesSection';
 
-type Tab = 'users' | 'stores' | 'payment-methods';
+type Tab = 'users' | 'stores' | 'payment-methods' | 'store-categories';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'users', label: 'Usuarios' },
   { id: 'stores', label: 'Tiendas' },
   { id: 'payment-methods', label: 'Métodos de pago' },
+  { id: 'store-categories', label: 'Categorías de tienda' },
 ];
 
 export default function AdminSettingsTabs() {
@@ -69,6 +71,15 @@ export default function AdminSettingsTabs() {
             Métodos de pago habilitados globalmente en la plataforma.
           </p>
           <AdminPaymentMethodsSection />
+        </section>
+      )}
+
+      {activeTab === 'store-categories' && (
+        <section role="tabpanel">
+          <p className="mb-6 text-neutral-400">
+            Categorías de tienda disponibles en la plataforma.
+          </p>
+          <AdminStoreCategoriesSection />
         </section>
       )}
     </div>
