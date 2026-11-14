@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { authService } from '@/services/authService';
 import Link from 'next/link';
 import axios from 'axios';
+import PasswordInput from '@/components/PasswordInput';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -92,6 +93,7 @@ export default function SignUpPage() {
             name="username"
             placeholder="Username"
             required
+            maxLength={16}
             onChange={handleChange}
             className="w-full px-4 py-3 bg-neutral-950 border border-neutral-800 rounded-lg text-white placeholder:text-neutral-600 focus:outline-none focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 transition-colors"
           />
@@ -103,13 +105,11 @@ export default function SignUpPage() {
             onChange={handleChange}
             className="w-full px-4 py-3 bg-neutral-950 border border-neutral-800 rounded-lg text-white placeholder:text-neutral-600 focus:outline-none focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 transition-colors"
           />
-          <input
-            type="password"
+          <PasswordInput
             name="password"
             placeholder="Contraseña (mínimo 8 caracteres)"
-            required
             onChange={handleChange}
-            className="w-full px-4 py-3 bg-neutral-950 border border-neutral-800 rounded-lg text-white placeholder:text-neutral-600 focus:outline-none focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 transition-colors"
+            autoComplete="new-password"
           />
 
           <button
